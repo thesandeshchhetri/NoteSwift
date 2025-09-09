@@ -65,7 +65,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         to_email: email,
         otp: '123456', // Replace with a real generated OTP
       };
-      await emailjs.send('Noteswift', 'MRCCMS', templateParams, 'YOUR_PUBLIC_KEY');
+      await emailjs.send('Noteswift', 'MRCCMS', templateParams, 'ts-Fq9pfLF4zrjo8j');
       toast({ title: 'Success', description: 'OTP sent to your email.' });
     } catch (error) {
       console.error('EmailJS error:', error);
