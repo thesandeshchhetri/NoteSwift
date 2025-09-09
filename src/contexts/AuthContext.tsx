@@ -13,7 +13,7 @@ interface AuthContextType {
   login: (credentials: Omit<User, 'id'>) => void;
   logout: () => void;
   updatePassword: (newPassword: string) => void;
-  sendOtp: (email: string) => Promise<void>;
+  sendOtp: (email: string) => Promise<boolean>;
   verifyOtp: (otp: string) => boolean;
 }
 
@@ -69,9 +69,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       };
       await emailjs.send('Noteswift', 'MRCCMS', templateParams, 'ts-Fq9pfLF4zrjo8j');
       toast({ title: 'Success', description: 'OTP sent to your email.' });
+      return true;
     } catch (error) {
       console.error('EmailJS error:', error);
       toast({ variant: 'destructive', title: 'Error', description: 'Failed to send OTP.' });
+      return false;
     }
   };
   

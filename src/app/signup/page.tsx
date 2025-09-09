@@ -98,8 +98,10 @@ export default function SignupPage() {
   async function handleSendCode() {
     const isValid = await form.trigger();
     if (isValid) {
-      await sendOtp(form.getValues('email'));
-      setStep(2);
+      const isSent = await sendOtp(form.getValues('email'));
+      if (isSent) {
+        setStep(2);
+      }
     }
   }
 
