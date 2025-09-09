@@ -11,7 +11,7 @@ import emailjs from '@emailjs/browser';
 interface NotesContextType {
   notes: Note[];
   deletedNotes: Note[];
-  addNote: (noteData: Omit<Note, 'id' | 'summary' | 'createdAt' | 'updatedAt' | 'userId'>) => Promise<void>;
+  addNote: (noteData: Omit<Note, 'id' | 'summary' | 'createdAt' | 'updatedAt' | 'userId' | 'deletedAt'>) => Promise<void>;
   updateNote: (noteId: string, noteData: Omit<Note, 'id' | 'summary' | 'createdAt' | 'updatedAt' | 'userId' | 'deletedAt'>, showToast?: boolean) => Promise<void>;
   deleteNote: (noteId: string) => void;
   restoreNote: (noteId: string) => void;
@@ -85,16 +85,10 @@ export function NotesProvider({ children }: { children: ReactNode }) {
       const { summary } = await summarizeNoteForSearch({ note: noteData.content });
       const now = new Date().toISOString();
       
-      setNotes(prevNotes => {
-        const updatedNotes = prevNotes.map(note =>
-            note.id === noteId ? { ...note, ...noteData, summary, updatedAt: now } : note
-        );
-        const storageKey = getNotesStorageKey();
-        if (storageKey) {
-            localStorage.setItem(storageKey, JSON.stringify(updatedNotes));
-        }
-        return updatedNotes;
-      });
+      const updatedNotes = notes.map(note =>
+        note.id === noteId ? { ...note, ...noteData, summary, updatedAt: now } : note
+      );
+      saveNotes(updatedNotes);
 
       if (showToast) {
         toast({ title: 'Success', description: 'Note updated successfully.' });
@@ -107,7 +101,8 @@ export function NotesProvider({ children }: { children: ReactNode }) {
     } finally {
       setIsProcessing(false);
     }
-  }, [getNotesStorageKey, toast]);
+  }, [notes, saveNotes, toast]);
+
 
   const checkReminders = useCallback(async () => {
     if (!user) return;
@@ -156,7 +151,7 @@ export function NotesProvider({ children }: { children: ReactNode }) {
     }
   }, []);
   
-  const addNote = async (noteData: Omit<Note, 'id' | 'summary' | 'createdAt' | 'updatedAt' | 'userId'>) => {
+  const addNote = async (noteData: Omit<Note, 'id' | 'summary' | 'createdAt' | 'updatedAt' | 'userId' | 'deletedAt'>) => {
     if (!user) {
         toast({ variant: 'destructive', title: 'Error', description: 'You must be logged in to add a note.' });
         return;
@@ -172,6 +167,8 @@ export function NotesProvider({ children }: { children: ReactNode }) {
         summary,
         createdAt: now,
         updatedAt: now,
+        reminderSet: noteData.reminderSet || false,
+        reminderAt: noteData.reminderAt || null,
         deletedAt: null,
       };
       saveNotes([newNote, ...notes]);
