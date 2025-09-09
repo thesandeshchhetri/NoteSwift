@@ -51,9 +51,8 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
               </SidebarGroupLabel>
               <SidebarMenu>
                 <SidebarMenuItem>
-                  <Link href="/" passHref legacyBehavior>
+                  <Link href="/">
                     <SidebarMenuButton
-                      as="a"
                       onClick={() => setSelectedTag(null)}
                       isActive={selectedTag === null}
                     >
