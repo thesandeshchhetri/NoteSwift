@@ -21,6 +21,7 @@ import { ScrollArea } from './ui/scroll-area';
 import { useNotes } from '@/contexts/NotesContext';
 import { useFilter } from '@/contexts/FilterContext';
 import { Tag } from 'lucide-react';
+import Link from 'next/link';
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const { notes } = useNotes();
@@ -50,12 +51,15 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
               </SidebarGroupLabel>
               <SidebarMenu>
                 <SidebarMenuItem>
-                  <SidebarMenuButton
-                    onClick={() => setSelectedTag(null)}
-                    isActive={selectedTag === null}
-                  >
-                    All Notes
-                  </SidebarMenuButton>
+                  <Link href="/" passHref>
+                    <SidebarMenuButton
+                      asChild
+                      onClick={() => setSelectedTag(null)}
+                      isActive={selectedTag === null}
+                    >
+                      <a>All Notes</a>
+                    </SidebarMenuButton>
+                  </Link>
                 </SidebarMenuItem>
                 {allTags.map(tag => (
                   <SidebarMenuItem key={tag}>
