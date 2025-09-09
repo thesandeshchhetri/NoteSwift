@@ -59,19 +59,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     
     console.log(`(Placeholder) Sending OTP to ${email}`);
     // Example using emailjs.send:
-    /*
+    
     try {
       const templateParams = {
         to_email: email,
         otp: '123456', // Replace with a real generated OTP
       };
-      await emailjs.send('YOUR_SERVICE_ID', 'YOUR_TEMPLATE_ID', templateParams, 'YOUR_PUBLIC_KEY');
+      await emailjs.send('Noteswift', 'MRCCMS', templateParams, 'YOUR_PUBLIC_KEY');
       toast({ title: 'Success', description: 'OTP sent to your email.' });
     } catch (error) {
       console.error('EmailJS error:', error);
       toast({ variant: 'destructive', title: 'Error', description: 'Failed to send OTP.' });
     }
-    */
+    
   }
 
   const signup = (details: Omit<User, 'id'>) => {
