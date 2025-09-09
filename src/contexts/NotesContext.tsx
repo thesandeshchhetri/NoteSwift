@@ -85,10 +85,16 @@ export function NotesProvider({ children }: { children: ReactNode }) {
       const { summary } = await summarizeNoteForSearch({ note: noteData.content });
       const now = new Date().toISOString();
       
-      const updatedNotes = notes.map(note =>
-        note.id === noteId ? { ...note, ...noteData, summary, updatedAt: now } : note
-      );
-      saveNotes(updatedNotes);
+      setNotes(prevNotes => {
+        const updatedNotes = prevNotes.map(note =>
+          note.id === noteId ? { ...note, ...noteData, summary, updatedAt: now } : note
+        );
+        const storageKey = getNotesStorageKey();
+        if (storageKey) {
+          localStorage.setItem(storageKey, JSON.stringify(updatedNotes));
+        }
+        return updatedNotes;
+      });
 
       if (showToast) {
         toast({ title: 'Success', description: 'Note updated successfully.' });
@@ -101,14 +107,14 @@ export function NotesProvider({ children }: { children: ReactNode }) {
     } finally {
       setIsProcessing(false);
     }
-  }, [notes, saveNotes, toast]);
+  }, [getNotesStorageKey, toast]);
 
 
   const checkReminders = useCallback(async () => {
     if (!user) return;
   
-    const now = new Date();
-    const userNotes = notes.filter(note => !note.deletedAt);
+    const userNotes = [...notes];
+    let notesChanged = false;
   
     for (const note of userNotes) {
       if (note.reminderSet && note.reminderAt && new Date(note.reminderAt) <= now) {
@@ -132,13 +138,19 @@ export function NotesProvider({ children }: { children: ReactNode }) {
         } catch (err) {
           console.error('Failed to send reminder email:', err);
         }
-  
-        const updatedNoteData = { ...note, reminderSet: false, reminderAt: null };
-        const { id, userId, createdAt, summary, deletedAt, ...noteDataToUpdate } = updatedNoteData;
-        await updateNote(note.id, noteDataToUpdate, false);
+        
+        const noteIndex = userNotes.findIndex(n => n.id === note.id);
+        if (noteIndex !== -1) {
+            userNotes[noteIndex] = { ...userNotes[noteIndex], reminderSet: false, reminderAt: null };
+            notesChanged = true;
+        }
       }
     }
-  }, [notes, user, updateNote]);
+
+    if (notesChanged) {
+        saveNotes(userNotes);
+    }
+  }, [notes, user, saveNotes]);
 
   useEffect(() => {
     const intervalId = setInterval(checkReminders, 60000);
