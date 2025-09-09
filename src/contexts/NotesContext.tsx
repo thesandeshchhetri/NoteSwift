@@ -113,6 +113,7 @@ export function NotesProvider({ children }: { children: ReactNode }) {
   const checkReminders = useCallback(async () => {
     if (!user) return;
   
+    const now = new Date();
     const userNotes = [...notes];
     let notesChanged = false;
   
