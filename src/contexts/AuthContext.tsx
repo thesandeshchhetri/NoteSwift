@@ -14,7 +14,8 @@ import {
   signOut,
   updatePassword as firebaseUpdatePassword,
   sendEmailVerification,
-  applyActionCode
+  applyActionCode,
+  type User as FirebaseUser
 } from 'firebase/auth';
 import { getFirestore, doc, setDoc, getDoc } from 'firebase/firestore';
 import { firebaseConfig } from '@/lib/firebase';
@@ -40,23 +41,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
   const { toast } = useToast();
 
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      if (firebaseUser) {
-        const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
-        if (userDoc.exists()) {
-          const userData = userDoc.data();
-          setUser({ id: firebaseUser.uid, email: firebaseUser.email!, username: userData.username });
-        } else {
-          // Handle case where user exists in auth but not in firestore
-           setUser({ id: firebaseUser.uid, email: firebaseUser.email!, username: firebaseUser.email! });
-        }
+  const handleUser = async (firebaseUser: FirebaseUser | null) => {
+    if (firebaseUser) {
+      const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
+      if (userDoc.exists()) {
+        const userData = userDoc.data();
+        setUser({ id: firebaseUser.uid, email: firebaseUser.email!, username: userData.username });
       } else {
-        setUser(null);
+         setUser({ id: firebaseUser.uid, email: firebaseUser.email!, username: firebaseUser.email! });
       }
-      setLoading(false);
-    });
+    } else {
+      setUser(null);
+    }
+    setLoading(false);
+  }
 
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, handleUser);
     return () => unsubscribe();
   }, []);
 
@@ -71,7 +72,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         email: details.email,
       });
       
-      setUser({ id: firebaseUser.uid, email: details.email, username: details.username });
+      await handleUser(firebaseUser); // Immediately process user data
+
       toast({ title: 'Success', description: 'Account created successfully!' });
       router.push('/');
 
@@ -82,7 +84,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = async (credentials: Omit<User, 'id'>) => {
     try {
-      await signInWithEmailAndPassword(auth, credentials.email, credentials.password!);
+      const userCredential = await signInWithEmailAndPassword(auth, credentials.email, credentials.password!);
+      await handleUser(userCredential.user); // Immediately process user data
+
       toast({ title: 'Success', description: 'Logged in successfully!' });
       router.push('/');
     } catch (error: any) {
@@ -93,6 +97,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = async () => {
     try {
       await signOut(auth);
+      setUser(null);
       router.push('/login');
       toast({ title: 'Logged out', description: 'You have been logged out.' });
     } catch (error: any) {
@@ -111,7 +116,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  // OTP functions are no longer needed with Firebase Auth email verification
   return (
     <AuthContext.Provider value={{ user, loading, signup, login, logout, updatePassword }}>
       {children}
