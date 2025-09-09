@@ -96,7 +96,7 @@ export function NoteEditor({ isOpen, onOpenChange, note }: NoteEditorProps) {
             {note ? 'Update your note details.' : 'Fill in the details for your new note.'}
           </DialogDescription>
         </DialogHeader>
-        <ScrollArea className="max-h-[70vh] pr-6">
+        <ScrollArea className="max-h-[70vh] pr-4">
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
               <FormField
