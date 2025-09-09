@@ -10,6 +10,8 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Input } from '@/components/ui/input';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
+import { useEffect } from 'react';
 
 const formSchema = z.object({
   newPassword: z.string().min(6, 'Password must be at least 6 characters'),
@@ -20,7 +22,7 @@ const formSchema = z.object({
 });
 
 export default function SettingsPage() {
-  const { updatePassword } = useAuth();
+  const { user, updatePassword } = useAuth();
   const router = useRouter();
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -30,10 +32,20 @@ export default function SettingsPage() {
     },
   });
 
+  useEffect(() => {
+    if (!user) {
+      router.push('/login');
+    }
+  }, [user, router]);
+
   function onSubmit(values: z.infer<typeof formSchema>) {
     updatePassword(values.newPassword);
     form.reset();
     router.push('/');
+  }
+
+  if (!user) {
+    return null; // or a loading spinner
   }
 
   return (
@@ -41,6 +53,9 @@ export default function SettingsPage() {
       <div className="flex flex-col h-full bg-background">
         <header className="flex items-center justify-between p-4 border-b">
           <h1 className="text-xl font-semibold">Account Settings</h1>
+          <Button asChild variant="outline">
+            <Link href="/">Back to Notes</Link>
+          </Button>
         </header>
         <main className="flex-1 overflow-y-auto p-4 md:p-6 flex items-center justify-center">
             <Card className="w-full max-w-lg">
@@ -49,6 +64,14 @@ export default function SettingsPage() {
                     <CardDescription>Enter a new password for your account.</CardDescription>
                 </CardHeader>
                 <CardContent>
+                    <div className="mb-6 space-y-2">
+                      <div>
+                        <span className="font-semibold">Username:</span> {user.username}
+                      </div>
+                      <div>
+                        <span className="font-semibold">Email:</span> {user.email}
+                      </div>
+                    </div>
                     <Form {...form}>
                         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
                         <FormField
