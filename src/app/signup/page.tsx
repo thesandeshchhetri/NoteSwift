@@ -1,17 +1,16 @@
 'use client';
 
-import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { useAuth } from '@/contexts/AuthContext';
 import Link from 'next/link';
-import { CheckCircle2, Circle, XCircle } from 'lucide-react';
-import { OtpInput } from '@/components/OtpInput';
+import { CheckCircle2, Circle } from 'lucide-react';
+import { Logo } from '@/components/Logo';
 
 const passwordValidation = new RegExp(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]).{8,}$/);
 
@@ -30,40 +29,6 @@ const formSchema = z
     path: ['confirmPassword'],
   });
 
-const Stepper = ({ step }: { step: number }) => (
-  <div className="flex items-center justify-center gap-4 mb-8">
-    <div className="flex items-center gap-2">
-      <div
-        className={`w-8 h-8 rounded-full flex items-center justify-center text-white ${
-          step >= 1 ? 'bg-primary' : 'bg-gray-300'
-        }`}
-      >
-        1
-      </div>
-    </div>
-    <div className={`h-1 w-12 ${step >= 2 ? 'bg-primary' : 'bg-gray-300'}`}></div>
-    <div className="flex items-center gap-2">
-      <div
-        className={`w-8 h-8 rounded-full flex items-center justify-center text-white ${
-          step >= 2 ? 'bg-primary' : 'bg-gray-300'
-        }`}
-      >
-        2
-      </div>
-    </div>
-    <div className={`h-1 w-12 ${step >= 3 ? 'bg-primary' : 'bg-gray-300'}`}></div>
-    <div className="flex items-center gap-2">
-      <div
-        className={`w-8 h-8 rounded-full flex items-center justify-center text-white ${
-          step >= 3 ? 'bg-primary' : 'bg-gray-300'
-        }`}
-      >
-        3
-      </div>
-    </div>
-  </div>
-);
-
 const PasswordRequirement = ({ meets, text }: { meets: boolean; text: string }) => (
   <div className={`flex items-center text-sm ${meets ? 'text-green-600' : 'text-muted-foreground'}`}>
     {meets ? <CheckCircle2 className="mr-2 h-4 w-4" /> : <Circle className="mr-2 h-4 w-4" />}
@@ -72,9 +37,7 @@ const PasswordRequirement = ({ meets, text }: { meets: boolean; text: string }) 
 );
 
 export default function SignupPage() {
-  const { sendOtp, signup, verifyOtp } = useAuth();
-  const [step, setStep] = useState(1);
-  const [otp, setOtp] = useState('');
+  const { signup } = useAuth();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -95,42 +58,23 @@ export default function SignupPage() {
     special: /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password),
   };
 
-  async function handleSendCode() {
-    const isValid = await form.trigger();
-    if (isValid) {
-      const isSent = await sendOtp(form.getValues('email'));
-      if (isSent) {
-        setStep(2);
-      }
-    }
-  }
-
-  async function handleVerifyAndSignup() {
-    const isOtpValid = verifyOtp(otp);
-
-    if (isOtpValid) {
-      const { username, email, password } = form.getValues();
-      await signup({ username, email, password });
-      // The router push will be handled by the signup function on success
-    } else {
-      // Handle incorrect OTP
-      form.setError('root', { type: 'manual', message: 'Invalid verification code.' });
-    }
+  function onSubmit(values: z.infer<typeof formSchema>) {
+    signup(values);
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-50 p-4">
-      <Card className="w-full max-w-lg">
+    <div className="flex min-h-screen items-center justify-center bg-background p-4">
+      <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <Stepper step={step} />
-          <h1 className="text-2xl font-bold text-primary">
-            {step === 1 ? 'Create Your Account' : 'Verify Your Email'}
-          </h1>
+            <div className="mx-auto mb-4">
+                <Logo />
+            </div>
+            <CardTitle className="text-2xl">Create Your Account</CardTitle>
+            <CardDescription>Join NoteSwift to start organizing your thoughts.</CardDescription>
         </CardHeader>
         <CardContent>
-          {step === 1 && (
             <Form {...form}>
-              <form onSubmit={(e) => e.preventDefault()} className="space-y-4">
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                 <FormField
                   control={form.control}
                   name="username"
@@ -166,7 +110,7 @@ export default function SignupPage() {
                       <FormControl>
                         <Input type="password" placeholder="Create a password" {...field} />
                       </FormControl>
-                      <div className="p-4 bg-gray-100 rounded-md mt-2 space-y-2">
+                      <div className="p-4 bg-muted/50 rounded-md mt-2 space-y-2">
                         <PasswordRequirement meets={passwordCriteria.length} text="At least 8 characters" />
                         <PasswordRequirement meets={passwordCriteria.uppercase} text="One uppercase letter" />
                         <PasswordRequirement meets={passwordCriteria.number} text="One number" />
@@ -189,35 +133,11 @@ export default function SignupPage() {
                     </FormItem>
                   )}
                 />
-                <Button onClick={handleSendCode} className="w-full">
-                  Send Verification Code
+                <Button type="submit" className="w-full">
+                  Create Account
                 </Button>
               </form>
             </Form>
-          )}
-
-          {step === 2 && (
-            <div className="space-y-6">
-              <p className="text-center text-muted-foreground">
-                Enter the 6-digit code sent to {form.getValues('email')}.
-              </p>
-              <div className="flex justify-center">
-                <OtpInput value={otp} onChange={setOtp} />
-              </div>
-              {form.formState.errors.root && (
-                 <div className="flex items-center justify-center text-destructive text-sm">
-                   <XCircle className="mr-2 h-4 w-4" />
-                   {form.formState.errors.root.message}
-                 </div>
-              )}
-              <Button onClick={handleVerifyAndSignup} className="w-full">
-                Verify & Create Account
-              </Button>
-              <Button variant="link" onClick={() => setStep(1)} className="w-full">
-                Back
-              </Button>
-            </div>
-          )}
 
           <div className="mt-4 text-center text-sm">
             Already have an account?{' '}

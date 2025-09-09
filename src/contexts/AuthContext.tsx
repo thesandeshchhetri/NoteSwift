@@ -5,6 +5,19 @@ import { useRouter } from 'next/navigation';
 import type { User } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 import emailjs from '@emailjs/browser';
+import { initializeApp } from 'firebase/app';
+import { 
+  getAuth, 
+  onAuthStateChanged, 
+  createUserWithEmailAndPassword, 
+  signInWithEmailAndPassword, 
+  signOut,
+  updatePassword as firebaseUpdatePassword,
+  sendEmailVerification,
+  applyActionCode
+} from 'firebase/auth';
+import { getFirestore, doc, setDoc, getDoc } from 'firebase/firestore';
+import { firebaseConfig } from '@/lib/firebase';
 
 interface AuthContextType {
   user: Omit<User, 'password'> | null;
@@ -13,14 +26,13 @@ interface AuthContextType {
   login: (credentials: Omit<User, 'id'>) => void;
   logout: () => void;
   updatePassword: (newPassword: string) => void;
-  sendOtp: (email: string) => Promise<boolean>;
-  verifyOtp: (otp: string) => boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const USERS_STORAGE_KEY = 'noteswift-users';
-const OTP_STORAGE_KEY = 'noteswift-otp';
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<Omit<User, 'password'> | null>(null);
@@ -29,122 +41,79 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const { toast } = useToast();
 
   useEffect(() => {
-    try {
-      const loggedInUser = sessionStorage.getItem('noteswift-loggedin-user');
-      if (loggedInUser) {
-        const parsedUser: User = JSON.parse(loggedInUser);
-        setUser({ id: parsedUser.id, email: parsedUser.email, username: parsedUser.username });
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      if (firebaseUser) {
+        const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
+        if (userDoc.exists()) {
+          const userData = userDoc.data();
+          setUser({ id: firebaseUser.uid, email: firebaseUser.email!, username: userData.username });
+        } else {
+          // Handle case where user exists in auth but not in firestore
+           setUser({ id: firebaseUser.uid, email: firebaseUser.email!, username: firebaseUser.email! });
+        }
+      } else {
+        setUser(null);
       }
-    } catch (error) {
-      console.error('Failed to load user from session storage', error);
-      sessionStorage.removeItem('noteswift-loggedin-user');
-    } finally {
       setLoading(false);
-    }
+    });
+
+    return () => unsubscribe();
   }, []);
 
-  const getUsers = (): User[] => {
-    const users = localStorage.getItem(USERS_STORAGE_KEY);
-    return users ? JSON.parse(users) : [];
-  };
-
-  const saveUsers = (users: User[]) => {
-    localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(users));
-  };
-  
-  const generateOtp = () => {
-    return Math.floor(100000 + Math.random() * 900000).toString();
-  }
-
-  const sendOtp = async (email: string) => {
-    const otp = generateOtp();
-    sessionStorage.setItem(OTP_STORAGE_KEY, otp);
-    
-    try {
-      const templateParams = {
-        to_email: email,
-        otp: otp,
-        subject: 'Your NoteSwift Verification Code',
-        message: `Your One-Time Password (OTP) for signing up to NoteSwift is: ${otp}`
-      };
-      await emailjs.send('Noteswift', 'Noteswift', templateParams, 'ts-Fq9pfLF4zrjo8j');
-      toast({ title: 'Success', description: 'OTP sent to your email.' });
-      return true;
-    } catch (error) {
-      console.error('EmailJS send failed:', error);
-      const errorMessage = (error instanceof Error) ? error.message : 'An unknown error occurred';
-      toast({ variant: 'destructive', title: 'Error', description: `Failed to send OTP. Please check console for details.` });
-      return false;
-    }
-  };
-  
-  const verifyOtp = (otp: string) => {
-    const storedOtp = sessionStorage.getItem(OTP_STORAGE_KEY);
-    if (otp === storedOtp) {
-      sessionStorage.removeItem(OTP_STORAGE_KEY);
-      return true;
-    }
-    return false;
-  };
 
   const signup = async (details: Omit<User, 'id'>) => {
-    const users = getUsers();
-    const existingUser = users.find(u => u.email === details.email || u.username === details.username);
+    try {
+      const userCredential = await createUserWithEmailAndPassword(auth, details.email, details.password!);
+      const firebaseUser = userCredential.user;
+      
+      await setDoc(doc(db, 'users', firebaseUser.uid), {
+        username: details.username,
+        email: details.email,
+      });
+      
+      setUser({ id: firebaseUser.uid, email: details.email, username: details.username });
+      toast({ title: 'Success', description: 'Account created successfully!' });
+      router.push('/');
 
-    if (existingUser) {
-      toast({ variant: 'destructive', title: 'Error', description: 'An account with this email or username already exists.' });
-      return;
+    } catch (error: any) {
+       toast({ variant: 'destructive', title: 'Error', description: error.message });
     }
-
-    const newUser: User = { ...details, id: new Date().toISOString() };
-    const updatedUsers = [...users, newUser];
-    saveUsers(updatedUsers);
-    
-    const { password, ...userToSet } = newUser;
-    setUser(userToSet);
-    sessionStorage.setItem('noteswift-loggedin-user', JSON.stringify(userToSet));
-
-    toast({ title: 'Success', description: 'Account created successfully!' });
-    router.push('/');
   };
 
-  const login = (credentials: Omit<User, 'id'>) => {
-    const users = getUsers();
-    const foundUser = users.find(u => u.email === credentials.email);
-
-    if (foundUser && foundUser.password === credentials.password) {
-      const { password, ...userToSet } = foundUser;
-      setUser(userToSet);
-      sessionStorage.setItem('noteswift-loggedin-user', JSON.stringify(userToSet));
+  const login = async (credentials: Omit<User, 'id'>) => {
+    try {
+      await signInWithEmailAndPassword(auth, credentials.email, credentials.password!);
       toast({ title: 'Success', description: 'Logged in successfully!' });
       router.push('/');
-    } else {
+    } catch (error: any) {
       toast({ variant: 'destructive', title: 'Error', description: 'Invalid email or password.' });
     }
   };
   
-  const logout = () => {
-    setUser(null);
-    sessionStorage.removeItem('noteswift-loggedin-user');
-    router.push('/login');
-    toast({ title: 'Logged out', description: 'You have been logged out.' });
+  const logout = async () => {
+    try {
+      await signOut(auth);
+      router.push('/login');
+      toast({ title: 'Logged out', description: 'You have been logged out.' });
+    } catch (error: any) {
+       toast({ variant: 'destructive', title: 'Error', description: error.message });
+    }
   };
 
-  const updatePassword = (newPassword: string) => {
-    if (user) {
-      const users = getUsers();
-      const userIndex = users.findIndex(u => u.id === user.id);
-
-      if (userIndex !== -1) {
-        users[userIndex].password = newPassword;
-        saveUsers(users);
+  const updatePassword = async (newPassword: string) => {
+    if (auth.currentUser) {
+      try {
+        await firebaseUpdatePassword(auth.currentUser, newPassword);
         toast({ title: 'Success', description: 'Password updated successfully.' });
+      } catch (error: any) {
+        toast({ variant: 'destructive', title: 'Error', description: error.message });
       }
     }
   };
 
+  // OTP functions are no longer needed with Firebase Auth email verification
   return (
-    <AuthContext.Provider value={{ user, loading, signup, login, logout, updatePassword, sendOtp, verifyOtp }}>
+    <AuthContext.Provider value={{ user, loading, signup, login, logout, updatePassword }}>
       {children}
     </AuthContext.Provider>
   );

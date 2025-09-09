@@ -5,14 +5,16 @@ import type { Note, User } from '@/types';
 import { summarizeNoteForSearch } from '@/ai/flows/summarize-note-for-search';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from './AuthContext';
+import { getFirestore, collection, query, where, onSnapshot, addDoc, doc, updateDoc, deleteDoc, serverTimestamp, writeBatch, getDocs, Timestamp } from 'firebase/firestore';
+import { firebaseConfig } from '@/lib/firebase';
+import { initializeApp } from 'firebase/app';
 import emailjs from '@emailjs/browser';
-
 
 interface NotesContextType {
   notes: Note[];
   deletedNotes: Note[];
   addNote: (noteData: Omit<Note, 'id' | 'summary' | 'createdAt' | 'updatedAt' | 'userId' | 'deletedAt'>) => Promise<void>;
-  updateNote: (noteId: string, noteData: Omit<Note, 'id' | 'summary' | 'createdAt' | 'updatedAt' | 'userId' | 'deletedAt'>, showToast?: boolean) => Promise<void>;
+  updateNote: (noteId: string, noteData: Partial<Omit<Note, 'id' | 'summary' | 'createdAt' | 'updatedAt' | 'userId' | 'deletedAt'>>) => Promise<void>;
   deleteNote: (noteId: string) => void;
   restoreNote: (noteId: string) => void;
   permanentlyDeleteNote: (noteId: string) => void;
@@ -21,8 +23,8 @@ interface NotesContextType {
 
 const NotesContext = createContext<NotesContextType | undefined>(undefined);
 
-const NOTES_STORAGE_KEY_PREFIX = 'noteswift-notes-';
-const DELETED_NOTES_STORAGE_KEY_PREFIX = 'noteswift-deleted-notes-';
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
 
 export function NotesProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
@@ -30,95 +32,151 @@ export function NotesProvider({ children }: { children: ReactNode }) {
   const [deletedNotes, setDeletedNotes] = useState<Note[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const { toast } = useToast();
-  
-  const getNotesStorageKey = useCallback(() => {
-    return user ? `${NOTES_STORAGE_KEY_PREFIX}${user.id}` : null;
-  }, [user]);
 
-  const getDeletedNotesStorageKey = useCallback(() => {
-    return user ? `${DELETED_NOTES_STORAGE_KEY_PREFIX}${user.id}` : null;
-  }, [user]);
+  const toNote = (doc: any): Note => {
+    const data = doc.data();
+    return {
+        id: doc.id,
+        userId: data.userId,
+        title: data.title,
+        content: data.content,
+        tags: data.tags,
+        summary: data.summary,
+        createdAt: (data.createdAt as Timestamp)?.toDate().toISOString() || new Date().toISOString(),
+        updatedAt: (data.updatedAt as Timestamp)?.toDate().toISOString() || new Date().toISOString(),
+        reminderSet: data.reminderSet,
+        reminderAt: data.reminderAt ? (data.reminderAt as Timestamp).toDate().toISOString() : null,
+        deletedAt: data.deletedAt ? (data.deletedAt as Timestamp).toDate().toISOString() : null,
+    };
+  }
 
   useEffect(() => {
-    const notesKey = getNotesStorageKey();
-    const deletedNotesKey = getDeletedNotesStorageKey();
-    if (notesKey && deletedNotesKey) {
-      try {
-        const storedNotes = localStorage.getItem(notesKey);
-        setNotes(storedNotes ? JSON.parse(storedNotes) : []);
+    if (user) {
+      const q = query(collection(db, 'notes'), where('userId', '==', user.id), where('deletedAt', '==', null));
+      const unsubscribe = onSnapshot(q, (querySnapshot) => {
+        const notesData = querySnapshot.docs.map(toNote);
+        setNotes(notesData);
+      });
 
-        const storedDeletedNotes = localStorage.getItem(deletedNotesKey);
-        setDeletedNotes(storedDeletedNotes ? JSON.parse(storedDeletedNotes) : []);
-      } catch (error) {
-        console.error('Failed to load notes from local storage', error);
-        localStorage.removeItem(notesKey);
-        localStorage.removeItem(deletedNotesKey);
-        setNotes([]);
-        setDeletedNotes([]);
-      }
+      const deletedQ = query(collection(db, 'notes'), where('userId', '==', user.id), where('deletedAt', '!=', null));
+      const unsubscribeDeleted = onSnapshot(deletedQ, (querySnapshot) => {
+        const deletedNotesData = querySnapshot.docs.map(toNote);
+        setDeletedNotes(deletedNotesData);
+      });
+
+      return () => {
+        unsubscribe();
+        unsubscribeDeleted();
+      };
     } else {
       setNotes([]);
       setDeletedNotes([]);
     }
-  }, [user, getNotesStorageKey, getDeletedNotesStorageKey]);
+  }, [user]);
 
-
-  const saveNotes = useCallback((newNotes: Note[]) => {
-    const storageKey = getNotesStorageKey();
-    if (storageKey) {
-      setNotes(newNotes);
-      localStorage.setItem(storageKey, JSON.stringify(newNotes));
+  const addNote = async (noteData: Omit<Note, 'id' | 'summary' | 'createdAt' | 'updatedAt' | 'userId' | 'deletedAt'>) => {
+    if (!user) {
+      toast({ variant: 'destructive', title: 'Error', description: 'You must be logged in to add a note.' });
+      return;
     }
-  }, [getNotesStorageKey]);
-  
-  const saveDeletedNotes = useCallback((newDeletedNotes: Note[]) => {
-    const storageKey = getDeletedNotesStorageKey();
-    if (storageKey) {
-      setDeletedNotes(newDeletedNotes);
-      localStorage.setItem(storageKey, JSON.stringify(newDeletedNotes));
-    }
-  }, [getDeletedNotesStorageKey]);
-
-  const updateNote = useCallback(async (noteId: string, noteData: Omit<Note, 'id' | 'summary' | 'createdAt' | 'updatedAt' | 'userId' | 'deletedAt'>, showToast = true) => {
-     setIsProcessing(true);
+    setIsProcessing(true);
     try {
       const { summary } = await summarizeNoteForSearch({ note: noteData.content });
-      const now = new Date().toISOString();
-      
-      setNotes(prevNotes => {
-        const updatedNotes = prevNotes.map(note =>
-          note.id === noteId ? { ...note, ...noteData, summary, updatedAt: now } : note
-        );
-        const storageKey = getNotesStorageKey();
-        if (storageKey) {
-          localStorage.setItem(storageKey, JSON.stringify(updatedNotes));
-        }
-        return updatedNotes;
+      await addDoc(collection(db, 'notes'), {
+        ...noteData,
+        userId: user.id,
+        summary,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+        reminderSet: noteData.reminderSet || false,
+        reminderAt: noteData.reminderAt ? Timestamp.fromDate(new Date(noteData.reminderAt)) : null,
+        deletedAt: null,
       });
-
-      if (showToast) {
-        toast({ title: 'Success', description: 'Note updated successfully.' });
-      }
+      toast({ title: 'Success', description: 'Note created successfully.' });
     } catch (error) {
-      console.error('Failed to update note:', error);
-      if (showToast) {
-        toast({ variant: 'destructive', title: 'Error', description: 'Could not update note summary. Please try again.' });
-      }
+      console.error('Failed to add note:', error);
+      toast({ variant: 'destructive', title: 'Error', description: 'Could not generate note summary. Please try again.' });
     } finally {
       setIsProcessing(false);
     }
-  }, [getNotesStorageKey, toast]);
+  };
 
+  const updateNote = async (noteId: string, noteData: Partial<Omit<Note, 'id' | 'summary' | 'createdAt' | 'updatedAt' | 'userId' | 'deletedAt'>>) => {
+    setIsProcessing(true);
+    try {
+      const noteRef = doc(db, 'notes', noteId);
+      const updatePayload: any = {
+        ...noteData,
+        updatedAt: serverTimestamp(),
+      };
+      
+      if (noteData.content) {
+        const { summary } = await summarizeNoteForSearch({ note: noteData.content });
+        updatePayload.summary = summary;
+      }
+      if (noteData.reminderAt) {
+        updatePayload.reminderAt = Timestamp.fromDate(new Date(noteData.reminderAt));
+      }
+
+      await updateDoc(noteRef, updatePayload);
+      toast({ title: 'Success', description: 'Note updated successfully.' });
+    } catch (error) {
+      console.error('Failed to update note:', error);
+      toast({ variant: 'destructive', title: 'Error', description: 'Could not update note. Please try again.' });
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const deleteNote = async (noteId: string) => {
+    const noteRef = doc(db, 'notes', noteId);
+    try {
+      await updateDoc(noteRef, { deletedAt: serverTimestamp() });
+      toast({ title: 'Success', description: 'Note moved to recently deleted.' });
+    } catch(e) {
+        console.error("Error deleting document: ", e);
+        toast({ variant: 'destructive', title: 'Error', description: 'Could not delete note.' });
+    }
+  };
+
+  const restoreNote = async (noteId: string) => {
+    const noteRef = doc(db, 'notes', noteId);
+    try {
+        await updateDoc(noteRef, { deletedAt: null });
+        toast({ title: 'Success', description: 'Note restored.' });
+    } catch(e) {
+        console.error("Error restoring document: ", e);
+        toast({ variant: 'destructive', title: 'Error', description: 'Could not restore note.' });
+    }
+  };
+
+  const permanentlyDeleteNote = async (noteId: string) => {
+    const noteRef = doc(db, 'notes', noteId);
+    try {
+        await deleteDoc(noteRef);
+        toast({ title: 'Success', description: 'Note permanently deleted.' });
+    } catch (e) {
+        console.error("Error permanently deleting document: ", e);
+        toast({ variant: 'destructive', title: 'Error', description: 'Could not permanently delete note.' });
+    }
+  };
 
   const checkReminders = useCallback(async () => {
     if (!user) return;
-  
     const now = new Date();
-    const userNotes = [...notes];
-    let notesChanged = false;
-  
-    for (const note of userNotes) {
-      if (note.reminderSet && note.reminderAt && new Date(note.reminderAt) <= now) {
+    
+    const q = query(
+        collection(db, "notes"), 
+        where("userId", "==", user.id), 
+        where("reminderSet", "==", true),
+        where("reminderAt", "<=", Timestamp.fromDate(now))
+    );
+
+    const querySnapshot = await getDocs(q);
+    const batch = writeBatch(db);
+
+    querySnapshot.forEach(async (document) => {
+        const note = toNote(document);
         if (Notification.permission === 'granted') {
           new Notification('Note Reminder', {
             body: `This is a reminder for your note: "${note.title}"`,
@@ -140,18 +198,14 @@ export function NotesProvider({ children }: { children: ReactNode }) {
           console.error('Failed to send reminder email:', err);
         }
         
-        const noteIndex = userNotes.findIndex(n => n.id === note.id);
-        if (noteIndex !== -1) {
-            userNotes[noteIndex] = { ...userNotes[noteIndex], reminderSet: false, reminderAt: null };
-            notesChanged = true;
-        }
-      }
-    }
+        const noteRef = doc(db, "notes", note.id);
+        batch.update(noteRef, { reminderSet: false, reminderAt: null });
+    });
 
-    if (notesChanged) {
-        saveNotes(userNotes);
+    if (!querySnapshot.empty) {
+        await batch.commit();
     }
-  }, [notes, user, saveNotes]);
+  }, [user]);
 
   useEffect(() => {
     const intervalId = setInterval(checkReminders, 60000);
@@ -163,67 +217,6 @@ export function NotesProvider({ children }: { children: ReactNode }) {
       Notification.requestPermission();
     }
   }, []);
-  
-  const addNote = async (noteData: Omit<Note, 'id' | 'summary' | 'createdAt' | 'updatedAt' | 'userId' | 'deletedAt'>) => {
-    if (!user) {
-        toast({ variant: 'destructive', title: 'Error', description: 'You must be logged in to add a note.' });
-        return;
-    }
-    setIsProcessing(true);
-    try {
-      const { summary } = await summarizeNoteForSearch({ note: noteData.content });
-      const now = new Date().toISOString();
-      const newNote: Note = {
-        ...noteData,
-        id: now,
-        userId: user.id,
-        summary,
-        createdAt: now,
-        updatedAt: now,
-        reminderSet: noteData.reminderSet || false,
-        reminderAt: noteData.reminderAt || null,
-        deletedAt: null,
-      };
-      saveNotes([newNote, ...notes]);
-      toast({ title: 'Success', description: 'Note created successfully.' });
-    } catch (error) {
-      console.error('Failed to add note:', error);
-      toast({ variant: 'destructive', title: 'Error', description: 'Could not generate note summary. Please try again.' });
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-
-  const deleteNote = (noteId: string) => {
-    const noteToDelete = notes.find(note => note.id === noteId);
-    if (!noteToDelete) return;
-    
-    const remainingNotes = notes.filter(note => note.id !== noteId);
-    const updatedDeletedNote = { ...noteToDelete, deletedAt: new Date().toISOString() };
-
-    saveNotes(remainingNotes);
-    saveDeletedNotes([updatedDeletedNote, ...deletedNotes]);
-    toast({ title: 'Success', description: 'Note moved to recently deleted.' });
-  };
-  
-  const restoreNote = (noteId: string) => {
-    const noteToRestore = deletedNotes.find(note => note.id === noteId);
-    if (!noteToRestore) return;
-
-    const remainingDeletedNotes = deletedNotes.filter(note => note.id !== noteId);
-    const restoredNote = { ...noteToRestore, deletedAt: null };
-
-    saveDeletedNotes(remainingDeletedNotes);
-    saveNotes([restoredNote, ...notes]);
-    toast({ title: 'Success', description: 'Note restored.' });
-  };
-
-  const permanentlyDeleteNote = (noteId: string) => {
-    const updatedDeletedNotes = deletedNotes.filter(note => note.id !== noteId);
-    saveDeletedNotes(updatedDeletedNotes);
-    toast({ title: 'Success', description: 'Note permanently deleted.' });
-  };
-
 
   return (
     <NotesContext.Provider value={{ notes, deletedNotes, addNote, updateNote, deleteNote, restoreNote, permanentlyDeleteNote, isProcessing }}>
