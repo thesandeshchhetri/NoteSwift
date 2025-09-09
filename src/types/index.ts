@@ -13,4 +13,6 @@ export interface Note {
   summary: string;
   createdAt: string;
   updatedAt: string;
+  reminderSet: boolean;
+  reminderAt: string | null;
 }

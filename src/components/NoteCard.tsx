@@ -9,10 +9,11 @@ import {
 } from '@/components/ui/dropdown-menu';
 import type { Note } from '@/types';
 import { Button } from './ui/button';
-import { MoreHorizontal, Edit, Trash2 } from 'lucide-react';
+import { MoreHorizontal, Edit, Trash2, Bell } from 'lucide-react';
 import { useNotes } from '@/contexts/NotesContext';
 import { format, parseISO } from 'date-fns';
 import { TagBadge } from './TagBadge';
+import { cn } from '@/lib/utils';
 
 interface NoteCardProps {
   note: Note;
@@ -34,9 +35,14 @@ export function NoteCard({ note, onEdit }: NoteCardProps) {
       <CardHeader className="flex-row items-start justify-between">
         <div className="space-y-1.5">
           <CardTitle>{note.title}</CardTitle>
-          <CardDescription>
-            {format(parseISO(note.updatedAt), 'MMMM d, yyyy')}
-          </CardDescription>
+          <div className="flex items-center text-sm text-muted-foreground">
+            {note.reminderSet && note.reminderAt && (
+              <Bell className="w-4 h-4 mr-2 text-primary" />
+            )}
+            <CardDescription>
+              {format(parseISO(note.updatedAt), 'MMMM d, yyyy')}
+            </CardDescription>
+          </div>
         </div>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>

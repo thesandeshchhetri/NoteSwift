@@ -5,18 +5,25 @@ import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import type { Note } from '@/types';
 import { useNotes } from '@/contexts/NotesContext';
-import { useEffect } from 'react';
-import { Loader2 } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Bell, CalendarIcon, Loader2 } from 'lucide-react';
+import { Checkbox } from './ui/checkbox';
+import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
+import { cn } from '@/lib/utils';
+import { format } from 'date-fns';
+import { Calendar } from './ui/calendar';
 
 const formSchema = z.object({
   title: z.string().min(1, 'Title is required'),
   content: z.string().min(1, 'Content is required'),
   tags: z.string().optional(),
+  reminderSet: z.boolean().default(false),
+  reminderAt: z.date().optional().nullable(),
 });
 
 interface NoteEditorProps {
@@ -34,8 +41,12 @@ export function NoteEditor({ isOpen, onOpenChange, note }: NoteEditorProps) {
       title: '',
       content: '',
       tags: '',
+      reminderSet: false,
+      reminderAt: null,
     },
   });
+
+  const reminderSet = form.watch('reminderSet');
 
   useEffect(() => {
     if (note) {
@@ -43,12 +54,16 @@ export function NoteEditor({ isOpen, onOpenChange, note }: NoteEditorProps) {
         title: note.title,
         content: note.content,
         tags: note.tags.join(', '),
+        reminderSet: note.reminderSet,
+        reminderAt: note.reminderAt ? new Date(note.reminderAt) : null,
       });
     } else {
       form.reset({
         title: '',
         content: '',
         tags: '',
+        reminderSet: false,
+        reminderAt: null,
       });
     }
   }, [note, isOpen, form]);
@@ -58,6 +73,8 @@ export function NoteEditor({ isOpen, onOpenChange, note }: NoteEditorProps) {
         title: values.title,
         content: values.content,
         tags: values.tags ? values.tags.split(',').map(tag => tag.trim()).filter(Boolean) : [],
+        reminderSet: values.reminderSet,
+        reminderAt: values.reminderSet && values.reminderAt ? values.reminderAt.toISOString() : null,
     };
     if (note) {
       await updateNote(note.id, noteData);
@@ -119,6 +136,87 @@ export function NoteEditor({ isOpen, onOpenChange, note }: NoteEditorProps) {
                 </FormItem>
               )}
             />
+
+            <FormField
+              control={form.control}
+              name="reminderSet"
+              render={({ field }) => (
+                <FormItem className="flex flex-row items-center space-x-3 space-y-0 rounded-md border p-4">
+                  <FormControl>
+                    <Checkbox
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                    />
+                  </FormControl>
+                  <div className="space-y-1 leading-none">
+                    <FormLabel>
+                      Set Reminder
+                    </FormLabel>
+                    <FormDescription>
+                      Get a notification for this note.
+                    </FormDescription>
+                  </div>
+                </FormItem>
+              )}
+            />
+
+            {reminderSet && (
+               <FormField
+                control={form.control}
+                name="reminderAt"
+                render={({ field }) => (
+                  <FormItem className="flex flex-col">
+                    <FormLabel>Reminder Date & Time</FormLabel>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <FormControl>
+                          <Button
+                            variant={"outline"}
+                            className={cn(
+                              "w-[240px] pl-3 text-left font-normal",
+                              !field.value && "text-muted-foreground"
+                            )}
+                          >
+                            {field.value ? (
+                              format(field.value, "PPP HH:mm")
+                            ) : (
+                              <span>Pick a date</span>
+                            )}
+                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                          </Button>
+                        </FormControl>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={field.value ?? undefined}
+                          onSelect={field.onChange}
+                          disabled={(date) =>
+                            date < new Date(new Date().setHours(0,0,0,0)) 
+                          }
+                          initialFocus
+                        />
+                         <div className="p-3 border-t border-border">
+                          <Input
+                            type="time"
+                            onChange={(e) => {
+                              const [hours, minutes] = e.target.value.split(':');
+                              const newDate = new Date(field.value || new Date());
+                              newDate.setHours(parseInt(hours, 10));
+                              newDate.setMinutes(parseInt(minutes, 10));
+                              field.onChange(newDate);
+                            }}
+                            value={field.value ? format(field.value, 'HH:mm') : ''}
+                          />
+                        </div>
+                      </PopoverContent>
+                    </Popover>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
+            
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isProcessing}>
                 Cancel

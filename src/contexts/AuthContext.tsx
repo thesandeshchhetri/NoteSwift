@@ -59,13 +59,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const sendOtp = async (email: string) => {
     const otp = generateOtp();
     sessionStorage.setItem(OTP_STORAGE_KEY, otp);
-
-    console.log(`Sending OTP ${otp} to ${email}`);
     
     try {
       const templateParams = {
         to_email: email,
         otp: otp,
+        subject: 'Your NoteSwift Verification Code',
+        message: `Your One-Time Password (OTP) for signing up to NoteSwift is: ${otp}`
       };
       await emailjs.send('Noteswift', 'Noteswift', templateParams, 'ts-Fq9pfLF4zrjo8j');
       toast({ title: 'Success', description: 'OTP sent to your email.' });

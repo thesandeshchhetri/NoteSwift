@@ -1,9 +1,12 @@
 'use client';
 
 import { createContext, useContext, useState, useEffect, type ReactNode, useCallback } from 'react';
-import type { Note } from '@/types';
+import type { Note, User } from '@/types';
 import { summarizeNoteForSearch } from '@/ai/flows/summarize-note-for-search';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from './AuthContext';
+import emailjs from '@emailjs/browser';
+
 
 interface NotesContextType {
   notes: Note[];
@@ -21,6 +24,51 @@ export function NotesProvider({ children }: { children: ReactNode }) {
   const [notes, setNotes] = useState<Note[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const { toast } = useToast();
+  const { user } = useAuth();
+
+
+  useEffect(() => {
+    const checkReminders = () => {
+      if (!user) return;
+  
+      const now = new Date();
+      const dueNotes = notes.filter(note => 
+        note.reminderSet && 
+        note.reminderAt && 
+        new Date(note.reminderAt) <= now
+      );
+  
+      dueNotes.forEach(note => {
+        // Show browser notification
+        if (Notification.permission === 'granted') {
+          new Notification('Note Reminder', {
+            body: `This is a reminder for your note: "${note.title}"`,
+          });
+        }
+  
+        // Send email notification
+        emailjs.send('Noteswift', 'Noteswift', {
+            to_email: user.email,
+            subject: `Reminder for your note: ${note.title}`,
+            message: `This is a reminder for your note titled "${note.title}". Please log in to NoteSwift to view it.`,
+          }, 'ts-Fq9pfLF4zrjo8j')
+          .catch(err => console.error('Failed to send reminder email:', err));
+  
+        // Mark reminder as handled to prevent re-triggering
+        const updatedNote = { ...note, reminderSet: false };
+        updateNote(note.id, updatedNote, false); // Update without showing toast
+      });
+    };
+  
+    const intervalId = setInterval(checkReminders, 60000); // Check every minute
+    return () => clearInterval(intervalId);
+  }, [notes, user]);
+
+  useEffect(() => {
+    if (Notification.permission !== 'granted' && Notification.permission !== 'denied') {
+      Notification.requestPermission();
+    }
+  }, []);
 
   useEffect(() => {
     try {
@@ -61,7 +109,7 @@ export function NotesProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const updateNote = async (noteId: string, noteData: Omit<Note, 'id' | 'summary' | 'createdAt' | 'updatedAt'>) => {
+  const updateNote = async (noteId: string, noteData: Omit<Note, 'id' | 'summary' | 'createdAt' | 'updatedAt'>, showToast = true) => {
      setIsProcessing(true);
     try {
       const { summary } = await summarizeNoteForSearch({ note: noteData.content });
@@ -70,10 +118,14 @@ export function NotesProvider({ children }: { children: ReactNode }) {
         note.id === noteId ? { ...note, ...noteData, summary, updatedAt: now } : note
       );
       saveNotes(updatedNotes);
-      toast({ title: 'Success', description: 'Note updated successfully.' });
+      if (showToast) {
+        toast({ title: 'Success', description: 'Note updated successfully.' });
+      }
     } catch (error) {
       console.error('Failed to update note:', error);
-      toast({ variant: 'destructive', title: 'Error', description: 'Could not update note summary. Please try again.' });
+      if (showToast) {
+        toast({ variant: 'destructive', title: 'Error', description: 'Could not update note summary. Please try again.' });
+      }
     } finally {
       setIsProcessing(false);
     }
