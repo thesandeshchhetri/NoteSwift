@@ -4,21 +4,16 @@ import { createContext, useContext, useState, useEffect, type ReactNode } from '
 import { useRouter } from 'next/navigation';
 import type { User } from '@/types';
 import { useToast } from '@/hooks/use-toast';
-import emailjs from '@emailjs/browser';
-import { initializeApp } from 'firebase/app';
 import { 
-  getAuth, 
   onAuthStateChanged, 
   createUserWithEmailAndPassword, 
   signInWithEmailAndPassword, 
   signOut,
   updatePassword as firebaseUpdatePassword,
-  sendEmailVerification,
-  applyActionCode,
   type User as FirebaseUser
 } from 'firebase/auth';
-import { getFirestore, doc, setDoc, getDoc } from 'firebase/firestore';
-import { firebaseConfig } from '@/lib/firebase';
+import { getDoc, doc, setDoc } from 'firebase/firestore';
+import { auth, db } from '@/lib/firebase';
 
 interface AuthContextType {
   user: Omit<User, 'password'> | null;
@@ -30,10 +25,6 @@ interface AuthContextType {
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
-
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<Omit<User, 'password'> | null>(null);

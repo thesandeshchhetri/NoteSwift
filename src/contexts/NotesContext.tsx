@@ -5,9 +5,8 @@ import type { Note, User } from '@/types';
 import { summarizeNoteForSearch } from '@/ai/flows/summarize-note-for-search';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from './AuthContext';
-import { getFirestore, collection, query, where, onSnapshot, addDoc, doc, updateDoc, deleteDoc, serverTimestamp, writeBatch, getDocs, Timestamp, initializeFirestore, enableIndexedDbPersistence } from 'firebase/firestore';
-import { firebaseConfig } from '@/lib/firebase';
-import { initializeApp } from 'firebase/app';
+import { collection, query, where, onSnapshot, addDoc, doc, updateDoc, deleteDoc, serverTimestamp, writeBatch, getDocs, Timestamp } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 import emailjs from '@emailjs/browser';
 
 interface NotesContextType {
@@ -22,24 +21,6 @@ interface NotesContextType {
 }
 
 const NotesContext = createContext<NotesContextType | undefined>(undefined);
-
-const app = initializeApp(firebaseConfig);
-
-const db = initializeFirestore(app, {});
-enableIndexedDbPersistence(db).catch((err) => {
-    if (err.code == 'failed-precondition') {
-      // Multiple tabs open, persistence can only be enabled
-      // in one tab at a a time.
-      // ...
-      console.error("Firestore persistence failed: failed-precondition. Multiple tabs open?");
-    } else if (err.code == 'unimplemented') {
-      // The current browser does not support all of the
-      // features required to enable persistence
-      // ...
-      console.error("Firestore persistence failed: unimplemented. Browser not supported?");
-    }
-  });
-
 
 export function NotesProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
@@ -71,12 +52,18 @@ export function NotesProvider({ children }: { children: ReactNode }) {
       const unsubscribe = onSnapshot(q, (querySnapshot) => {
         const notesData = querySnapshot.docs.map(toNote);
         setNotes(notesData);
+      }, (error) => {
+        console.error("Error fetching notes:", error);
+        toast({ variant: 'destructive', title: 'Error', description: 'Could not fetch notes.' });
       });
 
       const deletedQ = query(collection(db, 'notes'), where('userId', '==', user.id), where('deletedAt', '!=', null));
       const unsubscribeDeleted = onSnapshot(deletedQ, (querySnapshot) => {
         const deletedNotesData = querySnapshot.docs.map(toNote);
         setDeletedNotes(deletedNotesData);
+      }, (error) => {
+        console.error("Error fetching deleted notes:", error);
+        toast({ variant: 'destructive', title: 'Error', description: 'Could not fetch deleted notes.' });
       });
 
       return () => {
@@ -87,7 +74,7 @@ export function NotesProvider({ children }: { children: ReactNode }) {
       setNotes([]);
       setDeletedNotes([]);
     }
-  }, [user]);
+  }, [user, toast]);
 
   const addNote = async (noteData: Omit<Note, 'id' | 'summary' | 'createdAt' | 'updatedAt' | 'userId' | 'deletedAt'>) => {
     if (!user) {

@@ -1,6 +1,7 @@
-// This file is intentionally left blank. 
-// The Firebase configuration will be added here by the Firebase CLI during deployment.
-// It is recommended to not store your configuration in source control.
+import { initializeApp, getApp, getApps } from 'firebase/app';
+import { getAuth } from 'firebase/auth';
+import { getFirestore, enableIndexedDbPersistence } from 'firebase/firestore';
+
 export const firebaseConfig = {
   "projectId": "noteswift-hs7i8",
   "appId": "1:40404564759:web:f3f3c39df75dd6c70b1552",
@@ -10,3 +11,19 @@ export const firebaseConfig = {
   "measurementId": "",
   "messagingSenderId": "40404564759"
 };
+
+// Initialize Firebase
+const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+// Enable offline persistence
+enableIndexedDbPersistence(db).catch((err) => {
+  if (err.code == 'failed-precondition') {
+    console.error("Firestore persistence failed: Multiple tabs open, persistence can only be enabled in one tab at a time.");
+  } else if (err.code == 'unimplemented') {
+    console.error("Firestore persistence failed: The current browser does not support all of the features required to enable persistence.");
+  }
+});
+
+export { app, auth, db };
