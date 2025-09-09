@@ -9,7 +9,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import type { Note } from '@/types';
 import { Button } from './ui/button';
-import { MoreHorizontal, Edit, Trash2, Bell } from 'lucide-react';
+import { MoreHorizontal, Edit, Trash2, Bell, Download } from 'lucide-react';
 import { useNotes } from '@/contexts/NotesContext';
 import { format, parseISO } from 'date-fns';
 import { TagBadge } from './TagBadge';
@@ -22,7 +22,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 import * as React from 'react';
 
@@ -39,6 +38,19 @@ export function NoteCard({ note, onEdit }: NoteCardProps) {
   const handleDelete = () => {
     deleteNote(note.id);
     setIsDeleteDialogOpen(false);
+  };
+  
+  const handleDownload = () => {
+    const fileContent = `Title: ${note.title}\n\n${note.content}`;
+    const blob = new Blob([fileContent], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${note.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   };
 
   return (
@@ -66,6 +78,10 @@ export function NoteCard({ note, onEdit }: NoteCardProps) {
               <DropdownMenuItem onSelect={() => onEdit(note)}>
                 <Edit className="mr-2 h-4 w-4" />
                 <span>Edit</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={handleDownload}>
+                <Download className="mr-2 h-4 w-4" />
+                <span>Download</span>
               </DropdownMenuItem>
               <DropdownMenuItem onSelect={() => setIsDeleteDialogOpen(true)} className="text-destructive">
                 <Trash2 className="mr-2 h-4 w-4" />
