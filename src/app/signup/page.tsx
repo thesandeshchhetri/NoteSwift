@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useForm, zodResolver }s from '@hookform/resolvers/zod';
+import { useForm, zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
