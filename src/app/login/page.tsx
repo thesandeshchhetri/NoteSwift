@@ -12,6 +12,7 @@ import Link from 'next/link';
 import { Logo } from '@/components/Logo';
 
 const formSchema = z.object({
+  email: z.string().email('Invalid email address'),
   password: z.string().min(1, 'Password is required'),
 });
 
@@ -20,6 +21,7 @@ export default function LoginPage() {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
+      email: '',
       password: '',
     },
   });
@@ -36,11 +38,24 @@ export default function LoginPage() {
             <Logo />
           </div>
           <CardTitle className="text-2xl">Welcome Back!</CardTitle>
-          <CardDescription>Enter your password to access your notes.</CardDescription>
+          <CardDescription>Enter your credentials to access your notes.</CardDescription>
         </CardHeader>
         <CardContent>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+              <FormField
+                control={form.control}
+                name="email"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Email</FormLabel>
+                    <FormControl>
+                      <Input type="email" placeholder="jane.doe@example.com" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
               <FormField
                 control={form.control}
                 name="password"

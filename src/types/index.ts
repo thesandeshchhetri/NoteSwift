@@ -1,6 +1,6 @@
 export interface User {
   id: string;
-  username: string;
+  email: string;
   password?: string; // Only for storage, will be stripped from context
 }
 
