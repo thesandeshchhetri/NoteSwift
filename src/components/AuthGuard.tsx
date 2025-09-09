@@ -3,20 +3,17 @@
 import { useAuth } from '@/contexts/AuthContext';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, type ReactNode } from 'react';
-import { Skeleton } from './ui/skeleton';
-import { Logo } from './Logo';
+import { PenLine } from 'lucide-react';
 
 const PUBLIC_ROUTES = ['/login', '/signup'];
 
 const LoadingScreen = () => (
     <div className="flex h-screen items-center justify-center bg-background">
-      <div className="flex flex-col items-center gap-4 animate-pulse">
-        <div className="w-24 h-24">
-            <Logo />
-        </div>
-        <div className="space-y-2 text-center">
-            <p className='text-lg font-medium'>Loading your notes...</p>
-            <p className='text-sm text-muted-foreground'>Please wait a moment.</p>
+      <div className="flex flex-col items-center gap-6 text-center">
+        <PenLine className="h-16 w-16 animate-spin text-primary" />
+        <div>
+            <h2 className="text-2xl font-bold tracking-tight">Loading your notes...</h2>
+            <p className='text-muted-foreground'>Please wait a moment.</p>
         </div>
       </div>
     </div>
@@ -39,8 +36,7 @@ export function AuthGuard({ children }: { children: ReactNode }) {
     }
   }, [user, loading, pathname, router]);
   
-  const isPublicRoute = PUBLIC_ROUTES.includes(pathname);
-  if (loading || (!user && !isPublicRoute) || (user && isPublicRoute)) {
+  if (loading || (!user && !PUBLIC_ROUTES.includes(pathname)) || (user && PUBLIC_ROUTES.includes(pathname))) {
     return <LoadingScreen />;
   }
   
