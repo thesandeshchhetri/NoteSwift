@@ -14,7 +14,7 @@ import type { Note } from '@/types';
 export default function Home() {
   const { searchTerm, setSearchTerm } = useFilter();
   const [isEditorOpen, setIsEditorOpen] = React.useState(false);
-  const [editingNote, setEditingNote] = React.useState<Note | null>(null);
+  const [editingNote, setEditingNote] = React.useState<Omit<Note, 'userId'> | null>(null);
   const { notes } = useNotes();
 
   const handleNewNote = () => {
@@ -33,7 +33,7 @@ export default function Home() {
       return (
         note.title.toLowerCase().includes(searchLower) ||
         note.content.toLowerCase().includes(searchLower) ||
-        note.summary.toLowerCase().includes(searchLower) ||
+        (note.summary && note.summary.toLowerCase().includes(searchLower)) ||
         note.tags.some(tag => tag.toLowerCase().includes(searchLower))
       );
     });

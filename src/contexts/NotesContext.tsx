@@ -10,84 +10,103 @@ import emailjs from '@emailjs/browser';
 
 interface NotesContextType {
   notes: Note[];
-  addNote: (noteData: Omit<Note, 'id' | 'summary' | 'createdAt' | 'updatedAt'>) => Promise<void>;
-  updateNote: (noteId: string, noteData: Omit<Note, 'id' | 'summary' | 'createdAt' | 'updatedAt'>) => Promise<void>;
+  addNote: (noteData: Omit<Note, 'id' | 'summary' | 'createdAt' | 'updatedAt' | 'userId'>) => Promise<void>;
+  updateNote: (noteId: string, noteData: Omit<Note, 'id' | 'summary' | 'createdAt' | 'updatedAt' | 'userId'>, showToast?: boolean) => Promise<void>;
   deleteNote: (noteId: string) => void;
   isProcessing: boolean;
 }
 
 const NotesContext = createContext<NotesContextType | undefined>(undefined);
 
-const NOTES_STORAGE_KEY = 'noteswift-notes';
+const NOTES_STORAGE_KEY_PREFIX = 'noteswift-notes-';
 
 export function NotesProvider({ children }: { children: ReactNode }) {
   const [notes, setNotes] = useState<Note[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const { toast } = useToast();
   const { user } = useAuth();
-
+  
+  const getNotesStorageKey = useCallback(() => {
+    return user ? `${NOTES_STORAGE_KEY_PREFIX}${user.id}` : null;
+  }, [user]);
 
   useEffect(() => {
-    const checkReminders = () => {
-      if (!user) return;
-  
-      const now = new Date();
-      const dueNotes = notes.filter(note => 
-        note.reminderSet && 
-        note.reminderAt && 
-        new Date(note.reminderAt) <= now
-      );
-  
-      dueNotes.forEach(note => {
-        // Show browser notification
-        if (Notification.permission === 'granted') {
-          new Notification('Note Reminder', {
-            body: `This is a reminder for your note: "${note.title}"`,
-          });
+    const storageKey = getNotesStorageKey();
+    if (storageKey) {
+      try {
+        const storedNotes = localStorage.getItem(storageKey);
+        if (storedNotes) {
+          setNotes(JSON.parse(storedNotes));
+        } else {
+          setNotes([]);
         }
+      } catch (error) {
+        console.error('Failed to load notes from local storage', error);
+        localStorage.removeItem(storageKey);
+        setNotes([]);
+      }
+    } else {
+      setNotes([]);
+    }
+  }, [user, getNotesStorageKey]);
+
+
+  const saveNotes = useCallback((newNotes: Note[]) => {
+    const storageKey = getNotesStorageKey();
+    if (storageKey) {
+      setNotes(newNotes);
+      localStorage.setItem(storageKey, JSON.stringify(newNotes));
+    }
+  }, [getNotesStorageKey]);
   
-        // Send email notification
-        emailjs.send('Noteswift', 'Noteswift', {
-            to_email: user.email,
-            subject: `Reminder for your note: ${note.title}`,
-            message: `This is a reminder for your note titled "${note.title}". Please log in to NoteSwift to view it.`,
-          }, 'ts-Fq9pfLF4zrjo8j')
-          .catch(err => console.error('Failed to send reminder email:', err));
-  
-        // Mark reminder as handled to prevent re-triggering
-        const updatedNote = { ...note, reminderSet: false };
-        updateNote(note.id, updatedNote, false); // Update without showing toast
-      });
-    };
-  
-    const intervalId = setInterval(checkReminders, 60000); // Check every minute
-    return () => clearInterval(intervalId);
+  const checkReminders = useCallback(() => {
+    if (!user) return;
+
+    const now = new Date();
+    const userNotes = notes;
+
+    const dueNotes = userNotes.filter(note => 
+      note.reminderSet && 
+      note.reminderAt && 
+      new Date(note.reminderAt) <= now
+    );
+
+    dueNotes.forEach(note => {
+      if (Notification.permission === 'granted') {
+        new Notification('Note Reminder', {
+          body: `This is a reminder for your note: "${note.title}"`,
+        });
+      }
+
+      emailjs.send('Noteswift', 'Noteswift', {
+          to_email: user.email,
+          subject: `Reminder for your note: ${note.title}`,
+          message: `This is a reminder for your note titled "${note.title}". Please log in to NoteSwift to view it.`,
+        }, 'ts-Fq9pfLF4zrjo8j')
+        .catch(err => console.error('Failed to send reminder email:', err));
+
+      const updatedNote = { ...note, reminderSet: false };
+      const { id, userId, createdAt, summary, ...noteData } = updatedNote;
+      updateNote(note.id, noteData, false);
+    });
   }, [notes, user]);
+
+  useEffect(() => {
+    const intervalId = setInterval(checkReminders, 60000);
+    return () => clearInterval(intervalId);
+  }, [checkReminders]);
 
   useEffect(() => {
     if (Notification.permission !== 'granted' && Notification.permission !== 'denied') {
       Notification.requestPermission();
     }
   }, []);
-
-  useEffect(() => {
-    try {
-      const storedNotes = localStorage.getItem(NOTES_STORAGE_KEY);
-      if (storedNotes) {
-        setNotes(JSON.parse(storedNotes));
-      }
-    } catch (error) {
-      console.error('Failed to load notes from local storage', error);
-      localStorage.removeItem(NOTES_STORAGE_KEY);
-    }
-  }, []);
-
-  const saveNotes = (newNotes: Note[]) => {
-    setNotes(newNotes);
-    localStorage.setItem(NOTES_STORAGE_KEY, JSON.stringify(newNotes));
-  };
   
-  const addNote = async (noteData: Omit<Note, 'id' | 'summary' | 'createdAt' | 'updatedAt'>) => {
+  const addNote = async (noteData: Omit<Note, 'id' | 'summary' | 'createdAt' | 'updatedAt' | 'userId'>) => {
+    if (!user) {
+        toast({ variant: 'destructive', title: 'Error', description: 'You must be logged in to add a note.' });
+        return;
+    }
     setIsProcessing(true);
     try {
       const { summary } = await summarizeNoteForSearch({ note: noteData.content });
@@ -95,6 +114,7 @@ export function NotesProvider({ children }: { children: ReactNode }) {
       const newNote: Note = {
         ...noteData,
         id: now,
+        userId: user.id,
         summary,
         createdAt: now,
         updatedAt: now,
@@ -109,7 +129,7 @@ export function NotesProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const updateNote = async (noteId: string, noteData: Omit<Note, 'id' | 'summary' | 'createdAt' | 'updatedAt'>, showToast = true) => {
+  const updateNote = async (noteId: string, noteData: Omit<Note, 'id' | 'summary' | 'createdAt' | 'updatedAt' | 'userId'>, showToast = true) => {
      setIsProcessing(true);
     try {
       const { summary } = await summarizeNoteForSearch({ note: noteData.content });

@@ -29,7 +29,7 @@ const formSchema = z.object({
 interface NoteEditorProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
-  note: Note | null;
+  note: Omit<Note, 'userId'> | null;
 }
 
 export function NoteEditor({ isOpen, onOpenChange, note }: NoteEditorProps) {
