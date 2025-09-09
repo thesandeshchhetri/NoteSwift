@@ -25,11 +25,11 @@ const NOTES_STORAGE_KEY_PREFIX = 'noteswift-notes-';
 const DELETED_NOTES_STORAGE_KEY_PREFIX = 'noteswift-deleted-notes-';
 
 export function NotesProvider({ children }: { children: ReactNode }) {
+  const { user } = useAuth();
   const [notes, setNotes] = useState<Note[]>([]);
   const [deletedNotes, setDeletedNotes] = useState<Note[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const { toast } = useToast();
-  const { user } = useAuth();
   
   const getNotesStorageKey = useCallback(() => {
     return user ? `${NOTES_STORAGE_KEY_PREFIX}${user.id}` : null;
@@ -84,10 +84,18 @@ export function NotesProvider({ children }: { children: ReactNode }) {
     try {
       const { summary } = await summarizeNoteForSearch({ note: noteData.content });
       const now = new Date().toISOString();
-      const updatedNotes = notes.map(note =>
-        note.id === noteId ? { ...note, ...noteData, summary, updatedAt: now } : note
-      );
-      saveNotes(updatedNotes);
+      
+      setNotes(prevNotes => {
+        const updatedNotes = prevNotes.map(note =>
+            note.id === noteId ? { ...note, ...noteData, summary, updatedAt: now } : note
+        );
+        const storageKey = getNotesStorageKey();
+        if (storageKey) {
+            localStorage.setItem(storageKey, JSON.stringify(updatedNotes));
+        }
+        return updatedNotes;
+      });
+
       if (showToast) {
         toast({ title: 'Success', description: 'Note updated successfully.' });
       }
@@ -99,7 +107,7 @@ export function NotesProvider({ children }: { children: ReactNode }) {
     } finally {
       setIsProcessing(false);
     }
-  }, [notes, saveNotes, toast]);
+  }, [getNotesStorageKey, toast]);
 
   const checkReminders = useCallback(async () => {
     if (!user) return;
