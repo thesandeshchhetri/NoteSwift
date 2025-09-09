@@ -5,7 +5,7 @@ import type { Note, User } from '@/types';
 import { summarizeNoteForSearch } from '@/ai/flows/summarize-note-for-search';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from './AuthContext';
-import { getFirestore, collection, query, where, onSnapshot, addDoc, doc, updateDoc, deleteDoc, serverTimestamp, writeBatch, getDocs, Timestamp } from 'firebase/firestore';
+import { getFirestore, collection, query, where, onSnapshot, addDoc, doc, updateDoc, deleteDoc, serverTimestamp, writeBatch, getDocs, Timestamp, initializeFirestore, enableIndexedDbPersistence } from 'firebase/firestore';
 import { firebaseConfig } from '@/lib/firebase';
 import { initializeApp } from 'firebase/app';
 import emailjs from '@emailjs/browser';
@@ -24,7 +24,22 @@ interface NotesContextType {
 const NotesContext = createContext<NotesContextType | undefined>(undefined);
 
 const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
+
+const db = initializeFirestore(app, {});
+enableIndexedDbPersistence(db).catch((err) => {
+    if (err.code == 'failed-precondition') {
+      // Multiple tabs open, persistence can only be enabled
+      // in one tab at a a time.
+      // ...
+      console.error("Firestore persistence failed: failed-precondition. Multiple tabs open?");
+    } else if (err.code == 'unimplemented') {
+      // The current browser does not support all of the
+      // features required to enable persistence
+      // ...
+      console.error("Firestore persistence failed: unimplemented. Browser not supported?");
+    }
+  });
+
 
 export function NotesProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
