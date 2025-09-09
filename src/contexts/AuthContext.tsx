@@ -41,6 +41,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signup = (details: Omit<User, 'id'>) => {
     const newUser: User = { ...details, id: new Date().toISOString() };
+    // The password needs to be stored to be able to log in later.
     localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(newUser));
     setUser({ id: newUser.id, username: newUser.username });
     toast({ title: 'Success', description: 'Account created successfully!' });
