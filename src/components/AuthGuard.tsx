@@ -36,7 +36,9 @@ export function AuthGuard({ children }: { children: ReactNode }) {
     }
   }, [user, loading, pathname, router]);
   
-  if (loading || (!user && !PUBLIC_ROUTES.includes(pathname)) || (user && PUBLIC_ROUTES.includes(pathname))) {
+  const isPublicRoute = PUBLIC_ROUTES.includes(pathname);
+
+  if (loading || (!user && !isPublicRoute) || (user && isPublicRoute)) {
     return <LoadingScreen />;
   }
   
