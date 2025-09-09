@@ -67,7 +67,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         to_email: email,
         otp: otp,
       };
-      await emailjs.send('Noteswift', 'MRCCMS', templateParams, 'ts-Fq9pfLF4zrjo8j');
+      await emailjs.send('Noteswift', 'Noteswift', templateParams, 'ts-Fq9pfLF4zrjo8j');
       toast({ title: 'Success', description: 'OTP sent to your email.' });
       return true;
     } catch (error) {
