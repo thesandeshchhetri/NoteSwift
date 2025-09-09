@@ -51,13 +51,13 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
               </SidebarGroupLabel>
               <SidebarMenu>
                 <SidebarMenuItem>
-                  <Link href="/" passHref>
+                  <Link href="/" passHref legacyBehavior>
                     <SidebarMenuButton
-                      asChild
+                      as="a"
                       onClick={() => setSelectedTag(null)}
                       isActive={selectedTag === null}
                     >
-                      <a>All Notes</a>
+                      All Notes
                     </SidebarMenuButton>
                   </Link>
                 </SidebarMenuItem>
