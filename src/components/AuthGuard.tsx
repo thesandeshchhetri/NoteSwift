@@ -38,6 +38,7 @@ export function AuthGuard({ children }: { children: ReactNode }) {
   
   const isPublicRoute = PUBLIC_ROUTES.includes(pathname);
 
+  // Show loading screen if we are still loading, or if a redirect is imminent.
   if (loading || (!user && !isPublicRoute) || (user && isPublicRoute)) {
     return <LoadingScreen />;
   }
