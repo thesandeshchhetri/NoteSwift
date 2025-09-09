@@ -4,6 +4,7 @@ import { createContext, useContext, useState, useEffect, type ReactNode } from '
 import { useRouter } from 'next/navigation';
 import type { User } from '@/types';
 import { useToast } from '@/hooks/use-toast';
+import emailjs from '@emailjs/browser';
 
 interface AuthContextType {
   user: Omit<User, 'password'> | null;
@@ -48,7 +49,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(users));
   }
 
+  const sendOtp = async (email: string) => {
+    // This is where you would implement the EmailJS logic.
+    // You would need to:
+    // 1. Generate a one-time password (OTP).
+    // 2. Use emailjs.send() to send the OTP to the user's email.
+    // 3. Store the OTP temporarily (e.g., in state or session storage) to verify it later.
+    // 4. You will also need to build a new UI component to ask the user for the OTP they received.
+    
+    console.log(`(Placeholder) Sending OTP to ${email}`);
+    // Example using emailjs.send:
+    /*
+    try {
+      const templateParams = {
+        to_email: email,
+        otp: '123456', // Replace with a real generated OTP
+      };
+      await emailjs.send('YOUR_SERVICE_ID', 'YOUR_TEMPLATE_ID', templateParams, 'YOUR_PUBLIC_KEY');
+      toast({ title: 'Success', description: 'OTP sent to your email.' });
+    } catch (error) {
+      console.error('EmailJS error:', error);
+      toast({ variant: 'destructive', title: 'Error', description: 'Failed to send OTP.' });
+    }
+    */
+  }
+
   const signup = (details: Omit<User, 'id'>) => {
+    // Before creating the user, you would call sendOtp and then show a form to verify the OTP.
+    // For now, we'll proceed directly to creating the user.
+    // await sendOtp(details.email);
+    
     const users = getUsers();
     const existingUser = users.find(u => u.email === details.email);
 
