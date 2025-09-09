@@ -25,7 +25,7 @@ export function AuthGuard({ children }: { children: ReactNode }) {
   const router = useRouter();
 
   useEffect(() => {
-    if (loading) return;
+    if (loading) return; // Wait until authentication status is resolved.
 
     const isPublicRoute = PUBLIC_ROUTES.includes(pathname);
 
@@ -38,9 +38,16 @@ export function AuthGuard({ children }: { children: ReactNode }) {
   
   const isPublicRoute = PUBLIC_ROUTES.includes(pathname);
 
-  // Show loading screen if we are still loading, or if a redirect is imminent.
-  if (loading || (!user && !isPublicRoute) || (user && isPublicRoute)) {
+  if (loading) {
     return <LoadingScreen />;
+  }
+
+  if (!user && !isPublicRoute) {
+    return <LoadingScreen />; // Show loading while redirecting to login
+  }
+
+  if (user && isPublicRoute) {
+    return <LoadingScreen />; // Show loading while redirecting to home
   }
   
   return <>{children}</>;
