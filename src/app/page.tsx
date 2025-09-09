@@ -27,8 +27,12 @@ export default function Home() {
     setIsEditorOpen(true);
   };
   
+  const activeNotes = React.useMemo(() => {
+    return notes.filter(note => !note.deletedAt);
+  }, [notes]);
+  
   const filteredNotes = React.useMemo(() => {
-    return notes.filter(note => {
+    return activeNotes.filter(note => {
       const searchLower = searchTerm.toLowerCase();
       return (
         note.title.toLowerCase().includes(searchLower) ||
@@ -37,7 +41,7 @@ export default function Home() {
         note.tags.some(tag => tag.toLowerCase().includes(searchLower))
       );
     });
-  }, [notes, searchTerm]);
+  }, [activeNotes, searchTerm]);
 
 
   return (
