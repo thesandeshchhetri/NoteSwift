@@ -24,7 +24,7 @@ export function UserNav() {
     return null;
   }
   
-  const userInitial = user.email ? user.email.charAt(0).toUpperCase() : '?';
+  const userInitial = user.username ? user.username.charAt(0).toUpperCase() : (user.email ? user.email.charAt(0).toUpperCase() : '?');
 
   return (
     <DropdownMenu>
@@ -34,16 +34,17 @@ export function UserNav() {
             <AvatarFallback className="bg-primary text-primary-foreground">{userInitial}</AvatarFallback>
           </Avatar>
           <div className="flex flex-col items-start truncate">
-            <span className="text-sm font-medium">{user.email}</span>
+            <span className="text-sm font-medium">{user.username}</span>
+            <span className="text-xs text-muted-foreground">{user.email}</span>
           </div>
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent className="w-56" align="end" forceMount>
         <DropdownMenuLabel className="font-normal">
           <div className="flex flex-col space-y-1">
-            <p className="text-sm font-medium leading-none">{user.email}</p>
+            <p className="text-sm font-medium leading-none">{user.username}</p>
             <p className="text-xs leading-none text-muted-foreground">
-              Welcome!
+              {user.email}
             </p>
           </div>
         </DropdownMenuLabel>
