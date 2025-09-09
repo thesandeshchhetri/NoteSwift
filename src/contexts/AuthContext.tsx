@@ -71,8 +71,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       toast({ title: 'Success', description: 'OTP sent to your email.' });
       return true;
     } catch (error) {
-      console.error('EmailJS error:', error);
-      toast({ variant: 'destructive', title: 'Error', description: 'Failed to send OTP.' });
+      console.error('EmailJS send failed:', error);
+      const errorMessage = (error instanceof Error) ? error.message : 'An unknown error occurred';
+      toast({ variant: 'destructive', title: 'Error', description: `Failed to send OTP. Please check console for details.` });
       return false;
     }
   };
