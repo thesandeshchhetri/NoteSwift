@@ -37,35 +37,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser: FirebaseUser | null) => {
       if (firebaseUser) {
-        const idTokenResult = await firebaseUser.getIdTokenResult(true); // Force refresh
-        const isSuperAdmin = idTokenResult.claims.superadmin === true;
-        const isAdmin = idTokenResult.claims.role === 'admin';
-        const userRole = isSuperAdmin ? 'superadmin' : (isAdmin ? 'admin' : 'user');
-
-        // Set basic user details first to unblock the UI
-        setUser({ 
-          id: firebaseUser.uid, 
-          email: firebaseUser.email!, 
-          username: firebaseUser.email!, 
-          role: userRole 
-        });
-        setLoading(false);
-
-        // Then, fetch extended user details from Firestore in the background
+        const idTokenResult = await firebaseUser.getIdTokenResult(true); // Force refresh to get latest claims
+        const claims = idTokenResult.claims;
+        const userRole = claims.superadmin ? 'superadmin' : claims.role || 'user';
+        
         try {
-          const db = await getDb();
-          const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
-          if (userDoc.exists()) {
-            const userData = userDoc.data();
-            setUser(prevUser => prevUser ? { ...prevUser, username: userData.username } : null);
-          }
+            const db = await getDb();
+            const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
+            let username = firebaseUser.email!;
+
+            if (userDoc.exists()) {
+                username = userDoc.data().username || username;
+            }
+
+            setUser({
+                id: firebaseUser.uid,
+                email: firebaseUser.email!,
+                username: username,
+                role: userRole as 'superadmin' | 'admin' | 'user',
+            });
         } catch (error) {
-            console.error("Failed to get user document:", error);
+            console.error("Error fetching user data:", error);
+            // Set user with basic info even if firestore fails
+            setUser({
+                id: firebaseUser.uid,
+                email: firebaseUser.email!,
+                username: firebaseUser.email!,
+                role: userRole as 'superadmin' | 'admin' | 'user',
+            });
         }
       } else {
         setUser(null);
-        setLoading(false);
       }
+      setLoading(false);
     });
   
     return () => unsubscribe();

@@ -41,7 +41,7 @@ const createUserFlow = ai.defineFlow(
         await initFirebaseAdmin();
         const decodedToken = await getAuth().verifyIdToken(idToken);
         
-        // Superadmins and admins should be able to create users.
+        // Superadmins and admins can create users.
         const isSuperAdmin = decodedToken.superadmin === true;
         const isAdmin = decodedToken.role === 'admin';
 
