@@ -35,15 +35,18 @@ const createUserFlow = ai.defineFlow(
         const req = auth as NextRequest;
         const idToken = req.headers.get('Authorization')?.split('Bearer ')[1];
         if (!idToken) {
-            throw new Error('Unauthorized');
+            throw new Error('Unauthorized: No token provided.');
         }
         
         await initFirebaseAdmin();
         const decodedToken = await getAuth().verifyIdToken(idToken);
         
         // Superadmins and admins should be able to create users.
-        if (decodedToken.role !== 'superadmin' && decodedToken.role !== 'admin') {
-            throw new Error('Only admins or superadmins can create users.');
+        const isSuperAdmin = decodedToken.superadmin === true;
+        const isAdmin = decodedToken.role === 'admin';
+
+        if (!isSuperAdmin && !isAdmin) {
+            throw new Error('Forbidden: Only admins or superadmins can create users.');
         }
     },
   },
