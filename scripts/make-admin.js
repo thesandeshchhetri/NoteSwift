@@ -1,38 +1,36 @@
-// This script is used to assign the 'superadmin' role to a user in Firestore.
-// To run it, you will need to have Node.js installed and have the Firebase Admin SDK configured.
-// As this is a prototype environment, you would typically run this from your local machine with service account credentials.
+// This script assigns the 'superadmin' custom claim to a user.
+// Custom claims are a secure way to implement role-based access control with Firebase.
+// To run it, you need to have Node.js and Firebase Admin SDK configured.
 
 // Usage: node scripts/make-admin.js <user_email>
 
 const { initializeApp, cert } = require('firebase-admin/app');
-const { getFirestore } = require('firebase-admin/firestore');
 const { getAuth } = require('firebase-admin/auth');
 const fs = require('fs');
 const path = require('path');
 
 const serviceAccountPath = path.join(__dirname, 'serviceAccountKey.json');
 
+// Check if the service account key file exists and provide a helpful error message if not.
 if (!fs.existsSync(serviceAccountPath)) {
   console.error(`
 Error: Service account key file not found.
 Please download your Firebase project's service account key, rename it to 'serviceAccountKey.json', and place it in the 'scripts' directory.
 
-You can generate a service account key in your Firebase project settings:
+You can generate a new private key in your Firebase project settings:
 Project Settings > Service accounts > Generate new private key.
 `);
   process.exit(1);
 }
 
-// IMPORTANT: Replace with your actual service account key file path
 const serviceAccount = require(serviceAccountPath);
 
+// Initialize Firebase Admin SDK
 initializeApp({
   credential: cert(serviceAccount)
 });
 
-const db = getFirestore();
 const auth = getAuth();
-
 const userEmail = process.argv[2];
 
 if (!userEmail) {
@@ -42,21 +40,22 @@ if (!userEmail) {
 
 async function makeAdmin(email) {
   try {
-    // Get the user by email from Firebase Auth to find their UID
+    // Get the user by email from Firebase Auth
     const userRecord = await auth.getUserByEmail(email);
     const uid = userRecord.uid;
 
-    // Update or create the user's document in the 'users' collection in Firestore
-    const userRef = db.collection('users').doc(uid);
-    // Use set with merge:true to create the document if it doesn't exist, or update it if it does.
-    await userRef.set({ role: 'superadmin' }, { merge: true });
+    // Set the custom claim { superadmin: true } on the user account
+    await auth.setCustomUserClaims(uid, { superadmin: true });
     
-    console.log(`Successfully assigned 'superadmin' role to ${email} (UID: ${uid})`);
+    console.log(`Successfully assigned 'superadmin' custom claim to ${email} (UID: ${uid})`);
+    console.log('Please log out and log back in for the changes to take effect.');
+
   } catch (error) {
     if (error.code === 'auth/user-not-found') {
         console.error(`
 Error: No user record found for the email "${email}".
-Please make sure you are using the email address you used to sign up for the application, not the service account email.
+Please make sure you are using the email address you used to sign up for the application.
+This is your personal user account email, not the service account email.
 `);
     } else {
         console.error('Error assigning admin role:', error.message);

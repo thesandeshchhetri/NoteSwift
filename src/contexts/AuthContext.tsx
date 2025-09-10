@@ -37,8 +37,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser: FirebaseUser | null) => {
       if (firebaseUser) {
+        const idTokenResult = await firebaseUser.getIdTokenResult();
+        const isSuperAdmin = idTokenResult.claims.superadmin === true;
+        const userRole = isSuperAdmin ? 'superadmin' : 'user';
+
         // Set basic user details first to unblock the UI
-        setUser({ id: firebaseUser.uid, email: firebaseUser.email!, username: firebaseUser.email!, role: 'user' });
+        setUser({ 
+          id: firebaseUser.uid, 
+          email: firebaseUser.email!, 
+          username: firebaseUser.email!, 
+          role: userRole 
+        });
         setLoading(false);
 
         // Then, fetch extended user details from Firestore in the background
@@ -47,7 +56,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
           if (userDoc.exists()) {
             const userData = userDoc.data();
-            setUser(prevUser => prevUser ? { ...prevUser, username: userData.username, role: userData.role || 'user' } : null);
+            setUser(prevUser => prevUser ? { ...prevUser, username: userData.username } : null);
           }
         } catch (error) {
             console.error("Failed to get user document:", error);
@@ -68,12 +77,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const firebaseUser = userCredential.user;
       
       const db = await getDb();
+      // Set the user document in Firestore.
       await setDoc(doc(db, 'users', firebaseUser.uid), {
         username: details.username,
         email: details.email,
-        role: 'user', // Default role
       });
       
+      // We don't set the role here anymore. It will be derived from custom claims.
       setUser({ id: firebaseUser.uid, email: firebaseUser.email!, username: details.username, role: 'user' });
 
       toast({ title: 'Success', description: 'Account created successfully!' });
@@ -87,9 +97,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = async (credentials: Omit<User, 'id' | 'username'>): Promise<boolean> => {
     try {
       await signInWithEmailAndPassword(auth, credentials.email, credentials.password!);
-      // onAuthStateChanged will handle setting the user
+      // onAuthStateChanged will handle setting the user and redirecting
       toast({ title: 'Success', description: 'Logged in successfully!' });
-      router.push('/');
       return true;
     } catch (error: any) {
       toast({ variant: 'destructive', title: 'Error', description: 'Invalid email or password.' });
