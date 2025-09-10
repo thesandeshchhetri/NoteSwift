@@ -96,7 +96,6 @@ export function NotesProvider({ children }: { children: ReactNode }) {
       return;
     }
     
-    setIsProcessing(true);
     let noteRef;
     try {
       const db = await getDb();
@@ -115,6 +114,7 @@ export function NotesProvider({ children }: { children: ReactNode }) {
 
       noteRef = await addDoc(collection(db, 'notes'), notePayload);
       toast({ title: 'Success', description: 'Note created successfully.' });
+      router.push('/');
 
       // Non-blocking AI summarization
       summarizeNoteForSearch({ note: noteData.content })
@@ -131,8 +131,6 @@ export function NotesProvider({ children }: { children: ReactNode }) {
       console.error('Failed to add note:', error);
       toast({ variant: 'destructive', title: 'Error', description: 'Could not create note. Please try again.' });
       throw error;
-    } finally {
-      setIsProcessing(false);
     }
   };
 
@@ -142,7 +140,6 @@ export function NotesProvider({ children }: { children: ReactNode }) {
         return;
     }
     
-    setIsProcessing(true);
     let noteRef;
     try {
       const db = await getDb();
@@ -175,8 +172,6 @@ export function NotesProvider({ children }: { children: ReactNode }) {
       console.error('Failed to update note:', error);
       toast({ variant: 'destructive', title: 'Error', description: 'Could not update note. Please try again.' });
       throw error;
-    } finally {
-        setIsProcessing(false);
     }
   };
 

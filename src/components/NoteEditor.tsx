@@ -70,6 +70,8 @@ export function NoteEditor({ isOpen, onOpenChange, note }: NoteEditorProps) {
   }, [note, isOpen, form]);
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
+    onOpenChange(false);
+    
     const noteData = {
       title: values.title,
       content: values.content,
@@ -85,10 +87,10 @@ export function NoteEditor({ isOpen, onOpenChange, note }: NoteEditorProps) {
       } else {
         await addNote(noteData);
       }
-      onOpenChange(false);
     } catch (error) {
       console.error('Error saving note:', error);
-      // Error toast is handled in the context
+      // Error toast is handled in the context, but we need to reopen the dialog on failure
+      onOpenChange(true);
     }
   }
 
