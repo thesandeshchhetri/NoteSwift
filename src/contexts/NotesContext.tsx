@@ -5,7 +5,7 @@ import type { Note } from '@/types';
 import { summarizeNoteForSearch } from '@/ai/flows/summarize-note-for-search';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from './AuthContext';
-import { collection, query, where, onSnapshot, addDoc, doc, updateDoc, deleteDoc, serverTimestamp, Timestamp } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, addDoc, doc, updateDoc, deleteDoc, serverTimestamp, Timestamp, writeBatch } from 'firebase/firestore';
 import { getDb } from '@/lib/firebase';
 
 interface NotesContextType {
@@ -90,27 +90,19 @@ export function NotesProvider({ children }: { children: ReactNode }) {
 
   const addNote = async (noteData: Omit<Note, 'id' | 'summary' | 'createdAt' | 'updatedAt' | 'userId' | 'deletedAt'> & { reminderAt: Date | null }) => {
     if (!user) {
-      toast({ variant: 'destructive', title: 'Error', description: 'You must be logged in to add a note.' });
+      toast({ variant: 'destructive', title: 'Error', 'description': 'You must be logged in to add a note.' });
       return;
     }
     setIsProcessing(true);
+    let noteRef;
     try {
-      let summary = '';
-      try {
-        const summaryResult = await summarizeNoteForSearch({ note: noteData.content });
-        summary = summaryResult.summary;
-      } catch (aiError) {
-        console.error('AI summarization failed:', aiError);
-        // Do not toast here, just fall back to empty summary
-      }
-
       const db = await getDb();
       const newNote = {
         userId: user.id,
         title: noteData.title,
         content: noteData.content,
         tags: noteData.tags,
-        summary: summary,
+        summary: '',
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
         reminderSet: noteData.reminderSet || false,
@@ -118,8 +110,21 @@ export function NotesProvider({ children }: { children: ReactNode }) {
         deletedAt: null,
       };
 
-      await addDoc(collection(db, 'notes'), newNote);
+      noteRef = await addDoc(collection(db, 'notes'), newNote);
       toast({ title: 'Success', description: 'Note created successfully.' });
+
+      // Run summarization in the background
+      summarizeNoteForSearch({ note: noteData.content })
+        .then(async (summaryResult) => {
+          if (noteRef) {
+            await updateDoc(noteRef, { summary: summaryResult.summary, updatedAt: serverTimestamp() });
+          }
+        })
+        .catch((aiError) => {
+          console.error('Background AI summarization failed:', aiError);
+          // Optional: You could add a quiet failure notification here if needed
+        });
+
     } catch (error) {
       console.error('Failed to add note:', error);
       toast({ variant: 'destructive', title: 'Error', description: 'Could not create note. Please try again.' });
