@@ -7,7 +7,6 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from './AuthContext';
 import { collection, query, where, onSnapshot, addDoc, doc, updateDoc, deleteDoc, serverTimestamp, writeBatch, getDocs, Timestamp } from 'firebase/firestore';
 import { getDb } from '@/lib/firebase';
-import emailjs from '@emailjs/browser';
 
 interface NotesContextType {
   notes: Note[];
@@ -181,7 +180,8 @@ export function NotesProvider({ children }: { children: ReactNode }) {
   };
 
   const checkReminders = useCallback(async () => {
-    if (!user) return;
+    if (!user || typeof window === 'undefined') return;
+
     const now = new Date();
     
     try {
@@ -196,35 +196,37 @@ export function NotesProvider({ children }: { children: ReactNode }) {
       const querySnapshot = await getDocs(q);
       const batch = writeBatch(db);
 
-      querySnapshot.forEach(async (document) => {
-          const note = toNote(document);
-          if (Notification.permission === 'granted') {
-            new Notification('Note Reminder', {
-              body: `This is a reminder for your note: "${note.title}"`,
-            });
-          }
-    
-          try {
-            await emailjs.send(
-              'Noteswift',
-              'Noteswift',
-              {
-                to_email: user.email,
-                subject: `Reminder for your note: ${note.title}`,
-                message: `This is a reminder for your note titled "${note.title}". Please log in to NoteSwift to view it.`,
-              },
-              'ts-Fq9pfLF4zrjo8j'
-            );
-          } catch (err) {
-            console.error('Failed to send reminder email:', err);
-          }
-          
-          const noteRef = doc(db, "notes", note.id);
-          batch.update(noteRef, { reminderSet: false, reminderAt: null });
-      });
-
       if (!querySnapshot.empty) {
-          await batch.commit();
+        const emailjs = (await import('@emailjs/browser')).default;
+        
+        querySnapshot.forEach(async (document) => {
+            const note = toNote(document);
+            if (Notification.permission === 'granted') {
+              new Notification('Note Reminder', {
+                body: `This is a reminder for your note: "${note.title}"`,
+              });
+            }
+      
+            try {
+              await emailjs.send(
+                'Noteswift',
+                'Noteswift',
+                {
+                  to_email: user.email,
+                  subject: `Reminder for your note: ${note.title}`,
+                  message: `This is a reminder for your note titled "${note.title}". Please log in to NoteSwift to view it.`,
+                },
+                'ts-Fq9pfLF4zrjo8j'
+              );
+            } catch (err) {
+              console.error('Failed to send reminder email:', err);
+            }
+            
+            const noteRef = doc(db, "notes", note.id);
+            batch.update(noteRef, { reminderSet: false, reminderAt: null });
+        });
+        
+        await batch.commit();
       }
     } catch (error) {
         console.error("Error checking reminders:", error);
@@ -232,15 +234,19 @@ export function NotesProvider({ children }: { children: ReactNode }) {
   }, [user]);
 
   useEffect(() => {
-    const intervalId = setInterval(checkReminders, 60000);
-    return () => clearInterval(intervalId);
+    if (typeof window !== 'undefined') {
+      const requestNotificationPermission = () => {
+        if (Notification.permission !== 'granted' && Notification.permission !== 'denied') {
+          Notification.requestPermission();
+        }
+      };
+
+      requestNotificationPermission();
+      const intervalId = setInterval(checkReminders, 60000);
+      return () => clearInterval(intervalId);
+    }
   }, [checkReminders]);
 
-  useEffect(() => {
-    if (Notification.permission !== 'granted' && Notification.permission !== 'denied') {
-      Notification.requestPermission();
-    }
-  }, []);
 
   return (
     <NotesContext.Provider value={{ notes, deletedNotes, addNote, updateNote, deleteNote, restoreNote, permanentlyDeleteNote, isProcessing }}>
