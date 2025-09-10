@@ -79,10 +79,7 @@ export function NoteEditor({ isOpen, onOpenChange, note }: NoteEditorProps) {
     };
     try {
       if (note) {
-        await updateNote(note.id, {
-          ...noteData,
-          reminderAt: noteData.reminderAt ? noteData.reminderAt.toISOString() : null
-        });
+        await updateNote(note.id, noteData);
       } else {
         await addNote(noteData);
       }
@@ -94,7 +91,11 @@ export function NoteEditor({ isOpen, onOpenChange, note }: NoteEditorProps) {
   }
 
   return (
-    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+    <Dialog open={isOpen} onOpenChange={(open) => {
+      if (!isProcessing) {
+        onOpenChange(open);
+      }
+    }}>
       <DialogContent className="sm:max-w-[625px]">
         <DialogHeader>
           <DialogTitle>{note ? 'Edit Note' : 'Create Note'}</DialogTitle>
