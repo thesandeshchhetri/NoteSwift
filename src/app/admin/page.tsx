@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import type { User } from '@/types';
-import { collection, getDocs, query, getCountFromServer, where } from 'firebase/firestore';
+import { collection, getDocs, query, getCountFromServer, where, onSnapshot } from 'firebase/firestore';
 import { getDb } from '@/lib/firebase';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Users, FileText } from 'lucide-react';
@@ -20,40 +20,49 @@ export default function AdminDashboardPage() {
   const { toast } = useToast();
 
   useEffect(() => {
+    let unsubscribe: () => void = () => {};
+
     async function fetchData() {
         try {
             const db = await getDb();
-            
-            // Fetch all users
-            const usersQuery = query(collection(db, 'users'));
-            const usersSnapshot = await getDocs(usersQuery);
-            const usersList = usersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as User[];
             
             // Fetch total note count
             const notesCollection = collection(db, 'notes');
             const totalNotesSnapshot = await getCountFromServer(notesCollection);
             setNoteCount(totalNotesSnapshot.data().count);
-            setUserCount(usersList.length);
+            
+            // Listen for changes to users collection
+            const usersQuery = query(collection(db, 'users'));
+            unsubscribe = onSnapshot(usersQuery, async (usersSnapshot) => {
+                const usersList = usersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as User[];
+                setUserCount(usersList.length);
 
-            // Fetch note count for each user
-            const usersWithNoteCounts = await Promise.all(
-                usersList.map(async (user) => {
-                    const userNotesQuery = query(collection(db, 'notes'), where('userId', '==', user.id));
-                    const notesSnapshot = await getCountFromServer(userNotesQuery);
-                    return { ...user, noteCount: notesSnapshot.data().count };
-                })
-            );
+                // Fetch note count for each user
+                const usersWithNoteCounts = await Promise.all(
+                    usersList.map(async (user) => {
+                        const userNotesQuery = query(collection(db, 'notes'), where('userId', '==', user.id));
+                        const notesSnapshot = await getCountFromServer(userNotesQuery);
+                        return { ...user, noteCount: notesSnapshot.data().count };
+                    })
+                );
 
-            setUsers(usersWithNoteCounts);
+                setUsers(usersWithNoteCounts);
+                setLoading(false);
+            }, (error) => {
+                console.error("Error fetching users:", error);
+                toast({ variant: 'destructive', title: 'Error', description: 'Failed to fetch user data.' });
+                setLoading(false);
+            });
 
         } catch (err) {
             console.error(err);
-            toast({ variant: 'destructive', title: 'Error', description: 'Failed to fetch admin data.' });
-        } finally {
+            toast({ variant: 'destructive', title: 'Error', description: 'Failed to fetch initial admin data.' });
             setLoading(false);
         }
     }
     fetchData();
+
+    return () => unsubscribe();
   }, [toast]);
   
 

@@ -37,9 +37,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser: FirebaseUser | null) => {
       if (firebaseUser) {
-        const idTokenResult = await firebaseUser.getIdTokenResult();
+        const idTokenResult = await firebaseUser.getIdTokenResult(true); // Force refresh
         const isSuperAdmin = idTokenResult.claims.superadmin === true;
-        const userRole = isSuperAdmin ? 'superadmin' : 'user';
+        const isAdmin = idTokenResult.claims.role === 'admin';
+        const userRole = isSuperAdmin ? 'superadmin' : (isAdmin ? 'admin' : 'user');
 
         // Set basic user details first to unblock the UI
         setUser({ 
@@ -81,6 +82,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await setDoc(doc(db, 'users', firebaseUser.uid), {
         username: details.username,
         email: details.email,
+        role: 'user', // Default role
       });
       
       // We don't set the role here anymore. It will be derived from custom claims.

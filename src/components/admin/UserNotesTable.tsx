@@ -21,6 +21,7 @@ import { Button } from "../ui/button";
 import { Skeleton } from "../ui/skeleton";
 import { ScrollArea } from "../ui/scroll-area";
 import { Trash2 } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface UserNotesTableProps {
   notes: Note[];
@@ -29,6 +30,7 @@ interface UserNotesTableProps {
 }
 
 export function UserNotesTable({ notes, loading, onDeleteNote }: UserNotesTableProps) {
+    const { user: currentUser } = useAuth();
     const sortedNotes = [...notes].sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
 
   return (
@@ -77,10 +79,12 @@ export function UserNotesTable({ notes, loading, onDeleteNote }: UserNotesTableP
                         </ScrollArea>
                     </DialogContent>
                 </Dialog>
-                <Button variant="destructive" size="sm" onClick={() => onDeleteNote(note)}>
-                    <Trash2 className="mr-2 h-4 w-4" />
-                    Delete
-                </Button>
+                {currentUser?.role === 'superadmin' && (
+                    <Button variant="destructive" size="sm" onClick={() => onDeleteNote(note)}>
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        Delete
+                    </Button>
+                )}
                 </TableCell>
               </TableRow>
             ))

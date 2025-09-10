@@ -3,7 +3,7 @@ export interface User {
   username: string;
   email: string;
   password?: string; // Only for storage, will be stripped from context
-  role?: 'superadmin' | 'user';
+  role?: 'superadmin' | 'admin' | 'user';
 }
 
 export interface Note {

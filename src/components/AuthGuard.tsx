@@ -29,7 +29,7 @@ export function AuthGuard({ children }: { children: ReactNode }) {
       router.push('/');
     }
 
-    if (user && isAdminRoute && user.role !== 'superadmin') {
+    if (user && isAdminRoute && user.role !== 'superadmin' && user.role !== 'admin') {
         router.push('/');
     }
 
@@ -39,7 +39,7 @@ export function AuthGuard({ children }: { children: ReactNode }) {
   const isAdminRoute = ADMIN_ROUTES.some(route => pathname.startsWith(route));
 
   // While loading, or if a redirect is imminent, render a loading screen.
-  if (loading || (!user && !isPublicRoute) || (user && isPublicRoute) || (user && isAdminRoute && user.role !== 'superadmin')) {
+  if (loading || (!user && !isPublicRoute) || (user && isPublicRoute) || (user && isAdminRoute && user.role !== 'superadmin' && user.role !== 'admin')) {
     return (
         <div className="flex min-h-screen w-full items-center justify-center bg-background">
             <Logo />

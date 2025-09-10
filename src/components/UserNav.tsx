@@ -54,7 +54,7 @@ export function UserNav() {
             <Settings className="mr-2 h-4 w-4" />
             <span>Settings</span>
           </DropdownMenuItem>
-          {user.role === 'superadmin' && (
+          {(user.role === 'superadmin' || user.role === 'admin') && (
             <DropdownMenuItem onSelect={() => router.push('/admin')}>
               <Shield className="mr-2 h-4 w-4" />
               <span>Admin Dashboard</span>
