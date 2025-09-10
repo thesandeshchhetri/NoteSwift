@@ -96,8 +96,8 @@ export function NotesProvider({ children }: { children: ReactNode }) {
       return;
     }
     
-    let noteRef;
     setIsProcessing(true);
+    let noteRef;
     try {
       const db = await getDb();
       const notePayload = {
@@ -115,7 +115,6 @@ export function NotesProvider({ children }: { children: ReactNode }) {
 
       noteRef = await addDoc(collection(db, 'notes'), notePayload);
       toast({ title: 'Success', description: 'Note created successfully.' });
-      router.push('/');
 
       // Non-blocking AI summarization
       summarizeNoteForSearch({ note: noteData.content })
@@ -143,8 +142,8 @@ export function NotesProvider({ children }: { children: ReactNode }) {
         return;
     }
     
-    let noteRef;
     setIsProcessing(true);
+    let noteRef;
     try {
       const db = await getDb();
       noteRef = doc(db, 'notes', noteId);

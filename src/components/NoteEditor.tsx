@@ -93,11 +93,7 @@ export function NoteEditor({ isOpen, onOpenChange, note }: NoteEditorProps) {
   }
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => {
-      if (!isProcessing) {
-        onOpenChange(open);
-      }
-    }}>
+    <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[625px]">
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)}>
