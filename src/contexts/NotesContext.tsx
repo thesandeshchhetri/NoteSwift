@@ -144,7 +144,6 @@ export function NotesProvider({ children }: { children: ReactNode }) {
         updatedAt: serverTimestamp(),
       };
       
-      // Handle reminder separately as it needs conversion
       if ('reminderAt' in noteData) {
         updatePayload.reminderAt = noteData.reminderAt ? Timestamp.fromDate(new Date(noteData.reminderAt as any)) : null;
       }
@@ -154,11 +153,11 @@ export function NotesProvider({ children }: { children: ReactNode }) {
     } catch (error) {
       console.error('Failed to update note:', error);
       toast({ variant: 'destructive', title: 'Error', description: 'Could not update note. Please try again.' });
-      setIsProcessing(false); // Reset on failure
-      return; // Stop execution if update fails
+      setIsProcessing(false);
+      return;
     }
 
-    setIsProcessing(false); // Unblock UI immediately after saving
+    setIsProcessing(false);
 
     // Non-blocking AI summarization in the background
     try {
