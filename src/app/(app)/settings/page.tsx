@@ -48,7 +48,7 @@ function RecentlyDeletedTab() {
                     <div className='flex-1'>
                       <p className="font-semibold">{note.title}</p>
                       <p className="text-sm text-muted-foreground">
-                        Deleted on {format(parseISO(note.deletedAt!), 'PPP')}
+                        Deleted on {note.deletedAt ? format(parseISO(note.deletedAt), 'PPP') : ''}
                       </p>
                     </div>
                     <div className='flex gap-2'>
