@@ -11,7 +11,7 @@ import { Textarea } from '@/components/ui/textarea';
 import type { Note } from '@/types';
 import { useNotes } from '@/contexts/NotesContext';
 import { useEffect } from 'react';
-import { Bell, CalendarIcon, Loader2 } from 'lucide-react';
+import { Bell, CalendarIcon } from 'lucide-react';
 import { Checkbox } from './ui/checkbox';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import { cn } from '@/lib/utils';
@@ -88,147 +88,147 @@ export function NoteEditor({ isOpen, onOpenChange, note }: NoteEditorProps) {
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[625px]">
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)}>
-            <DialogHeader>
-              <DialogTitle>{note ? 'Edit Note' : 'Create Note'}</DialogTitle>
-              <DialogDescription>
-                {note ? 'Update your note details.' : 'Fill in the details for your new note.'}
-              </DialogDescription>
-            </DialogHeader>
-            <ScrollArea className="max-h-[70vh] pr-4 py-4">
-              <div className="space-y-4">
-                <FormField
-                  control={form.control}
-                  name="title"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Title</FormLabel>
-                      <FormControl>
-                        <Input placeholder="My new note" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="content"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Content</FormLabel>
-                      <FormControl>
-                        <Textarea placeholder="Start writing your thoughts..." className="min-h-[200px]" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="tags"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Tags</FormLabel>
-                      <FormControl>
-                        <Input placeholder="e.g. work, personal, ideas" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="reminderSet"
-                  render={({ field }) => (
-                    <FormItem className="flex flex-row items-center space-x-3 space-y-0 rounded-md border p-4">
-                      <FormControl>
-                        <Checkbox
-                          checked={field.value}
-                          onCheckedChange={field.onChange}
-                        />
-                      </FormControl>
-                      <div className="space-y-1 leading-none">
-                        <FormLabel>
-                          Set Reminder
-                        </FormLabel>
-                        <FormDescription>
-                          Get a notification for this note.
-                        </FormDescription>
-                      </div>
-                    </FormItem>
-                  )}
-                />
-
-                {reminderSet && (
+      <DialogContent className="sm:max-w-[625px] grid-rows-[auto,1fr,auto] max-h-[90vh]">
+          <DialogHeader>
+            <DialogTitle>{note ? 'Edit Note' : 'Create Note'}</DialogTitle>
+            <DialogDescription>
+              {note ? 'Update your note details.' : 'Fill in the details for your new note.'}
+            </DialogDescription>
+          </DialogHeader>
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="grid grid-rows-[1fr,auto] gap-4 overflow-hidden">
+              <ScrollArea className="pr-4 -mr-4">
+                <div className="space-y-4 py-4">
                   <FormField
                     control={form.control}
-                    name="reminderAt"
+                    name="title"
                     render={({ field }) => (
-                      <FormItem className="flex flex-col">
-                        <FormLabel>Reminder Date & Time</FormLabel>
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <FormControl>
-                              <Button
-                                variant={"outline"}
-                                className={cn(
-                                  "w-[240px] pl-3 text-left font-normal",
-                                  !field.value && "text-muted-foreground"
-                                )}>
-                                {field.value ? (
-                                  format(field.value, "PPP HH:mm")
-                                ) : (
-                                  <span>Pick a date</span>
-                                )}
-                                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                              </Button>
-                            </FormControl>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-auto p-0" align="start">
-                            <Calendar
-                              mode="single"
-                              selected={field.value ?? undefined}
-                              onSelect={field.onChange}
-                              disabled={(date) =>
-                                date < new Date(new Date().setHours(0, 0, 0, 0))
-                              }
-                              initialFocus
-                            />
-                            <div className="p-3 border-t border-border">
-                              <Input
-                                type="time"
-                                onChange={(e) => {
-                                  const [hours, minutes] = e.target.value.split(':');
-                                  const newDate = new Date(field.value || new Date());
-                                  newDate.setHours(parseInt(hours, 10));
-                                  newDate.setMinutes(parseInt(minutes, 10));
-                                  field.onChange(newDate);
-                                }}
-                                value={field.value ? format(field.value, 'HH:mm') : ''}
-                              />
-                            </div>
-                          </PopoverContent>
-                        </Popover>
+                      <FormItem>
+                        <FormLabel>Title</FormLabel>
+                        <FormControl>
+                          <Input placeholder="My new note" {...field} />
+                        </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
-                )}
-              </div>
-            </ScrollArea>
-            <DialogFooter className="mt-4">
-              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-                Cancel
-              </Button>
-              <Button type="submit">
-                {note ? 'Save Changes' : 'Create Note'}
-              </Button>
-            </DialogFooter>
-          </form>
-        </Form>
+                  <FormField
+                    control={form.control}
+                    name="content"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Content</FormLabel>
+                        <FormControl>
+                          <Textarea placeholder="Start writing your thoughts..." className="min-h-[200px]" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="tags"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Tags</FormLabel>
+                        <FormControl>
+                          <Input placeholder="e.g. work, personal, ideas" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="reminderSet"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-center space-x-3 space-y-0 rounded-md border p-4">
+                        <FormControl>
+                          <Checkbox
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                          />
+                        </FormControl>
+                        <div className="space-y-1 leading-none">
+                          <FormLabel>
+                            Set Reminder
+                          </FormLabel>
+                          <FormDescription>
+                            Get a notification for this note.
+                          </FormDescription>
+                        </div>
+                      </FormItem>
+                    )}
+                  />
+
+                  {reminderSet && (
+                    <FormField
+                      control={form.control}
+                      name="reminderAt"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-col">
+                          <FormLabel>Reminder Date & Time</FormLabel>
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <FormControl>
+                                <Button
+                                  variant={"outline"}
+                                  className={cn(
+                                    "w-[240px] pl-3 text-left font-normal",
+                                    !field.value && "text-muted-foreground"
+                                  )}>
+                                  {field.value ? (
+                                    format(field.value, "PPP HH:mm")
+                                  ) : (
+                                    <span>Pick a date</span>
+                                  )}
+                                  <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                </Button>
+                              </FormControl>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0" align="start">
+                              <Calendar
+                                mode="single"
+                                selected={field.value ?? undefined}
+                                onSelect={field.onChange}
+                                disabled={(date) =>
+                                  date < new Date(new Date().setHours(0, 0, 0, 0))
+                                }
+                                initialFocus
+                              />
+                              <div className="p-3 border-t border-border">
+                                <Input
+                                  type="time"
+                                  onChange={(e) => {
+                                    const [hours, minutes] = e.target.value.split(':');
+                                    const newDate = new Date(field.value || new Date());
+                                    newDate.setHours(parseInt(hours, 10));
+                                    newDate.setMinutes(parseInt(minutes, 10));
+                                    field.onChange(newDate);
+                                  }}
+                                  value={field.value ? format(field.value, 'HH:mm') : ''}
+                                />
+                              </div>
+                            </PopoverContent>
+                          </Popover>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  )}
+                </div>
+              </ScrollArea>
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+                  Cancel
+                </Button>
+                <Button type="submit">
+                  {note ? 'Save Changes' : 'Create Note'}
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
       </DialogContent>
     </Dialog>
   );
