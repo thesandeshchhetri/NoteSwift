@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import type { Note } from '@/types';
 import { useNotes } from '@/contexts/NotesContext';
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { Bell, CalendarIcon, Loader2 } from 'lucide-react';
 import { Checkbox } from './ui/checkbox';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
@@ -77,15 +77,20 @@ export function NoteEditor({ isOpen, onOpenChange, note }: NoteEditorProps) {
         reminderSet: values.reminderSet,
         reminderAt: values.reminderSet && values.reminderAt ? values.reminderAt : null,
     };
-    if (note) {
-      await updateNote(note.id, {
-        ...noteData,
-        reminderAt: noteData.reminderAt ? noteData.reminderAt.toISOString() : null
-      });
-    } else {
-      await addNote(noteData);
+    try {
+      if (note) {
+        await updateNote(note.id, {
+          ...noteData,
+          reminderAt: noteData.reminderAt ? noteData.reminderAt.toISOString() : null
+        });
+      } else {
+        await addNote(noteData);
+      }
+    } catch (error) {
+      console.error("Note operation failed:", error);
+    } finally {
+      onOpenChange(false);
     }
-    onOpenChange(false);
   }
 
   return (

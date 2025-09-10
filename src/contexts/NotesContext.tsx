@@ -62,7 +62,7 @@ export function NotesProvider({ children }: { children: ReactNode }) {
             toast({ variant: 'destructive', title: 'Error', description: 'Could not fetch notes.' });
           });
 
-          const deletedQ = query(collection(db, 'notes'), where('userId', '==', null), where('deletedAt', '!=', null));
+          const deletedQ = query(collection(db, 'notes'), where('userId', '==', user.id), where('deletedAt', '!=', null));
           unsubscribeDeletedNotes = onSnapshot(deletedQ, (querySnapshot) => {
             const deletedNotesData = querySnapshot.docs.map(toNote);
             setDeletedNotes(deletedNotesData);
@@ -94,35 +94,32 @@ export function NotesProvider({ children }: { children: ReactNode }) {
       return;
     }
     setIsProcessing(true);
-    let noteRef;
     try {
       const db = await getDb();
-      const newNote = {
+      const noteRef = await addDoc(collection(db, 'notes'), {
         userId: user.id,
         title: noteData.title,
         content: noteData.content,
         tags: noteData.tags,
-        summary: '',
+        summary: '', // Start with an empty summary
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
         reminderSet: noteData.reminderSet || false,
         reminderAt: noteData.reminderAt ? Timestamp.fromDate(noteData.reminderAt) : null,
         deletedAt: null,
-      };
-
-      noteRef = await addDoc(collection(db, 'notes'), newNote);
+      });
       toast({ title: 'Success', description: 'Note created successfully.' });
-
-      // Run summarization in the background
-      try {
-        const summaryResult = await summarizeNoteForSearch({ note: noteData.content });
-        if (noteRef) {
-          await updateDoc(noteRef, { summary: summaryResult.summary, updatedAt: serverTimestamp() });
-        }
-      } catch (aiError) {
-        console.error('Background AI summarization failed:', aiError);
-        // Optional: You could add a quiet failure notification here if needed
-      }
+      
+      // Non-blocking AI summarization
+      summarizeNoteForSearch({ note: noteData.content })
+        .then(summaryResult => {
+          if (noteRef) {
+            updateDoc(noteRef, { summary: summaryResult.summary, updatedAt: serverTimestamp() });
+          }
+        })
+        .catch(aiError => {
+          console.error('Background AI summarization failed:', aiError);
+        });
 
     } catch (error) {
       console.error('Failed to add note:', error);
