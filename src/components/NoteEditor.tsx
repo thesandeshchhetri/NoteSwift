@@ -50,7 +50,7 @@ export function NoteEditor({ isOpen, onOpenChange, note }: NoteEditorProps) {
   const reminderSet = form.watch('reminderSet');
 
   useEffect(() => {
-    if (note) {
+    if (isOpen && note) {
       form.reset({
         title: note.title,
         content: note.content,
@@ -58,7 +58,7 @@ export function NoteEditor({ isOpen, onOpenChange, note }: NoteEditorProps) {
         reminderSet: note.reminderSet,
         reminderAt: note.reminderAt ? new Date(note.reminderAt) : null,
       });
-    } else {
+    } else if (isOpen) {
       form.reset({
         title: '',
         content: '',
@@ -77,17 +77,13 @@ export function NoteEditor({ isOpen, onOpenChange, note }: NoteEditorProps) {
         reminderSet: values.reminderSet,
         reminderAt: values.reminderSet && values.reminderAt ? values.reminderAt : null,
     };
-    try {
-      if (note) {
-        await updateNote(note.id, noteData);
-      } else {
-        await addNote(noteData);
-      }
-    } catch (error) {
-      console.error("Note operation failed:", error);
-    } finally {
-      onOpenChange(false);
+
+    if (note) {
+      await updateNote(note.id, noteData);
+    } else {
+      await addNote(noteData);
     }
+    onOpenChange(false);
   }
 
   return (

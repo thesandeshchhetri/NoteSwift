@@ -94,7 +94,6 @@ export function NotesProvider({ children }: { children: ReactNode }) {
       return;
     }
     setIsProcessing(true);
-    let noteRef;
     try {
       const db = await getDb();
       const notePayload = {
@@ -110,13 +109,13 @@ export function NotesProvider({ children }: { children: ReactNode }) {
         deletedAt: null,
       };
 
-      noteRef = await addDoc(collection(db, 'notes'), notePayload);
+      const noteRef = await addDoc(collection(db, 'notes'), notePayload);
       toast({ title: 'Success', description: 'Note created successfully.' });
 
       // Non-blocking AI summarization in the background
       summarizeNoteForSearch({ note: noteData.content }).then(summaryResult => {
           if (noteRef) {
-              updateDoc(noteRef, { summary: summaryResult.summary, updatedAt: serverTimestamp() });
+              updateDoc(noteRef, { summary: summaryResult.summary });
           }
       }).catch(aiError => {
           // Log AI error but don't bother the user, the note is already saved.
@@ -133,10 +132,9 @@ export function NotesProvider({ children }: { children: ReactNode }) {
 
   const updateNote = async (noteId: string, noteData: Partial<Omit<Note, 'id' | 'summary' | 'createdAt' | 'updatedAt' | 'userId' | 'deletedAt'>>) => {
     setIsProcessing(true);
-    let noteRef;
     try {
       const db = await getDb();
-      noteRef = doc(db, 'notes', noteId);
+      const noteRef = doc(db, 'notes', noteId);
       const updatePayload: any = {
         ...noteData,
         updatedAt: serverTimestamp(),
