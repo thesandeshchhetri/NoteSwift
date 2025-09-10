@@ -6,7 +6,7 @@ import { summarizeNoteForSearch } from '@/ai/flows/summarize-note-for-search';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from './AuthContext';
 import { collection, query, where, onSnapshot, addDoc, doc, updateDoc, deleteDoc, serverTimestamp, writeBatch, getDocs, Timestamp } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { getDb } from '@/lib/firebase';
 import emailjs from '@emailjs/browser';
 
 interface NotesContextType {
@@ -48,27 +48,39 @@ export function NotesProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (user) {
-      const q = query(collection(db, 'notes'), where('userId', '==', user.id), where('deletedAt', '==', null));
-      const unsubscribe = onSnapshot(q, (querySnapshot) => {
-        const notesData = querySnapshot.docs.map(toNote);
-        setNotes(notesData);
-      }, (error) => {
-        console.error("Error fetching notes:", error);
-        toast({ variant: 'destructive', title: 'Error', description: 'Could not fetch notes.' });
-      });
+      let unsubscribeNotes: () => void = () => {};
+      let unsubscribeDeletedNotes: () => void = () => {};
 
-      const deletedQ = query(collection(db, 'notes'), where('userId', '==', user.id), where('deletedAt', '!=', null));
-      const unsubscribeDeleted = onSnapshot(deletedQ, (querySnapshot) => {
-        const deletedNotesData = querySnapshot.docs.map(toNote);
-        setDeletedNotes(deletedNotesData);
-      }, (error) => {
-        console.error("Error fetching deleted notes:", error);
-        toast({ variant: 'destructive', title: 'Error', description: 'Could not fetch deleted notes.' });
-      });
+      const setupListeners = async () => {
+        try {
+          const db = await getDb();
+          const q = query(collection(db, 'notes'), where('userId', '==', user.id), where('deletedAt', '==', null));
+          unsubscribeNotes = onSnapshot(q, (querySnapshot) => {
+            const notesData = querySnapshot.docs.map(toNote);
+            setNotes(notesData);
+          }, (error) => {
+            console.error("Error fetching notes:", error);
+            toast({ variant: 'destructive', title: 'Error', description: 'Could not fetch notes.' });
+          });
+
+          const deletedQ = query(collection(db, 'notes'), where('userId', '==', user.id), where('deletedAt', '!=', null));
+          unsubscribeDeletedNotes = onSnapshot(deletedQ, (querySnapshot) => {
+            const deletedNotesData = querySnapshot.docs.map(toNote);
+            setDeletedNotes(deletedNotesData);
+          }, (error) => {
+            console.error("Error fetching deleted notes:", error);
+            toast({ variant: 'destructive', title: 'Error', description: 'Could not fetch deleted notes.' });
+          });
+        } catch (error) {
+            console.error("Failed to setup listeners:", error);
+        }
+      }
+
+      setupListeners();
 
       return () => {
-        unsubscribe();
-        unsubscribeDeleted();
+        unsubscribeNotes();
+        unsubscribeDeletedNotes();
       };
     } else {
       setNotes([]);
@@ -83,6 +95,7 @@ export function NotesProvider({ children }: { children: ReactNode }) {
     }
     setIsProcessing(true);
     try {
+      const db = await getDb();
       const { summary } = await summarizeNoteForSearch({ note: noteData.content });
       await addDoc(collection(db, 'notes'), {
         ...noteData,
@@ -106,6 +119,7 @@ export function NotesProvider({ children }: { children: ReactNode }) {
   const updateNote = async (noteId: string, noteData: Partial<Omit<Note, 'id' | 'summary' | 'createdAt' | 'updatedAt' | 'userId' | 'deletedAt'>>) => {
     setIsProcessing(true);
     try {
+      const db = await getDb();
       const noteRef = doc(db, 'notes', noteId);
       const updatePayload: any = {
         ...noteData,
@@ -131,8 +145,9 @@ export function NotesProvider({ children }: { children: ReactNode }) {
   };
 
   const deleteNote = async (noteId: string) => {
-    const noteRef = doc(db, 'notes', noteId);
     try {
+      const db = await getDb();
+      const noteRef = doc(db, 'notes', noteId);
       await updateDoc(noteRef, { deletedAt: serverTimestamp() });
       toast({ title: 'Success', description: 'Note moved to recently deleted.' });
     } catch(e) {
@@ -142,10 +157,11 @@ export function NotesProvider({ children }: { children: ReactNode }) {
   };
 
   const restoreNote = async (noteId: string) => {
-    const noteRef = doc(db, 'notes', noteId);
     try {
-        await updateDoc(noteRef, { deletedAt: null });
-        toast({ title: 'Success', description: 'Note restored.' });
+      const db = await getDb();
+      const noteRef = doc(db, 'notes', noteId);
+      await updateDoc(noteRef, { deletedAt: null });
+      toast({ title: 'Success', description: 'Note restored.' });
     } catch(e) {
         console.error("Error restoring document: ", e);
         toast({ variant: 'destructive', title: 'Error', description: 'Could not restore note.' });
@@ -153,10 +169,11 @@ export function NotesProvider({ children }: { children: ReactNode }) {
   };
 
   const permanentlyDeleteNote = async (noteId: string) => {
-    const noteRef = doc(db, 'notes', noteId);
     try {
-        await deleteDoc(noteRef);
-        toast({ title: 'Success', description: 'Note permanently deleted.' });
+      const db = await getDb();
+      const noteRef = doc(db, 'notes', noteId);
+      await deleteDoc(noteRef);
+      toast({ title: 'Success', description: 'Note permanently deleted.' });
     } catch (e) {
         console.error("Error permanently deleting document: ", e);
         toast({ variant: 'destructive', title: 'Error', description: 'Could not permanently delete note.' });
@@ -167,45 +184,50 @@ export function NotesProvider({ children }: { children: ReactNode }) {
     if (!user) return;
     const now = new Date();
     
-    const q = query(
-        collection(db, "notes"), 
-        where("userId", "==", user.id), 
-        where("reminderSet", "==", true),
-        where("reminderAt", "<=", Timestamp.fromDate(now))
-    );
+    try {
+      const db = await getDb();
+      const q = query(
+          collection(db, "notes"), 
+          where("userId", "==", user.id), 
+          where("reminderSet", "==", true),
+          where("reminderAt", "<=", Timestamp.fromDate(now))
+      );
 
-    const querySnapshot = await getDocs(q);
-    const batch = writeBatch(db);
+      const querySnapshot = await getDocs(q);
+      const batch = writeBatch(db);
 
-    querySnapshot.forEach(async (document) => {
-        const note = toNote(document);
-        if (Notification.permission === 'granted') {
-          new Notification('Note Reminder', {
-            body: `This is a reminder for your note: "${note.title}"`,
-          });
-        }
-  
-        try {
-          await emailjs.send(
-            'Noteswift',
-            'Noteswift',
-            {
-              to_email: user.email,
-              subject: `Reminder for your note: ${note.title}`,
-              message: `This is a reminder for your note titled "${note.title}". Please log in to NoteSwift to view it.`,
-            },
-            'ts-Fq9pfLF4zrjo8j'
-          );
-        } catch (err) {
-          console.error('Failed to send reminder email:', err);
-        }
-        
-        const noteRef = doc(db, "notes", note.id);
-        batch.update(noteRef, { reminderSet: false, reminderAt: null });
-    });
+      querySnapshot.forEach(async (document) => {
+          const note = toNote(document);
+          if (Notification.permission === 'granted') {
+            new Notification('Note Reminder', {
+              body: `This is a reminder for your note: "${note.title}"`,
+            });
+          }
+    
+          try {
+            await emailjs.send(
+              'Noteswift',
+              'Noteswift',
+              {
+                to_email: user.email,
+                subject: `Reminder for your note: ${note.title}`,
+                message: `This is a reminder for your note titled "${note.title}". Please log in to NoteSwift to view it.`,
+              },
+              'ts-Fq9pfLF4zrjo8j'
+            );
+          } catch (err) {
+            console.error('Failed to send reminder email:', err);
+          }
+          
+          const noteRef = doc(db, "notes", note.id);
+          batch.update(noteRef, { reminderSet: false, reminderAt: null });
+      });
 
-    if (!querySnapshot.empty) {
-        await batch.commit();
+      if (!querySnapshot.empty) {
+          await batch.commit();
+      }
+    } catch (error) {
+        console.error("Error checking reminders:", error);
     }
   }, [user]);
 

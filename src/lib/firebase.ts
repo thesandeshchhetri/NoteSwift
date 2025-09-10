@@ -1,6 +1,6 @@
 import { initializeApp, getApp, getApps } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
-import { getFirestore, enableIndexedDbPersistence } from 'firebase/firestore';
+import { getFirestore, enableIndexedDbPersistence, Firestore } from 'firebase/firestore';
 
 export const firebaseConfig = {
   "projectId": "noteswift-hs7i8",
@@ -15,16 +15,48 @@ export const firebaseConfig = {
 // Initialize Firebase
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 const auth = getAuth(app);
-const db = getFirestore(app);
 
-try {
-    enableIndexedDbPersistence(db);
-} catch (err: any) {
-    if (err.code == 'failed-precondition') {
-        console.error("Firestore persistence failed: Multiple tabs open, persistence can only be enabled in one tab at a time.");
-    } else if (err.code == 'unimplemented') {
-        console.error("Firestore persistence failed: The current browser does not support all of the features required to enable persistence.");
+let dbInstance: Firestore | null = null;
+let persistenceEnabled = false;
+let persistencePromise: Promise<void> | null = null;
+
+const initializePersistence = async (db: Firestore) => {
+    if (persistencePromise) {
+        return persistencePromise;
     }
-}
+    persistencePromise = new Promise(async (resolve, reject) => {
+        try {
+            await enableIndexedDbPersistence(db);
+            persistenceEnabled = true;
+            resolve();
+        } catch (err: any) {
+            if (err.code == 'failed-precondition') {
+                console.warn("Firestore persistence failed: Multiple tabs open. Operations will be in memory.");
+                // Persistence failed, but we can continue with in-memory persistence.
+                resolve(); 
+            } else if (err.code == 'unimplemented') {
+                console.warn("Firestore persistence failed: Browser does not support all features.");
+                resolve();
+            } else {
+                console.error("Firestore persistence error:", err);
+                reject(err);
+            }
+        }
+    });
+    return persistencePromise;
+};
 
-export { app, auth, db };
+export const getDb = async (): Promise<Firestore> => {
+    if (!dbInstance) {
+        const db = getFirestore(app);
+        await initializePersistence(db);
+        dbInstance = db;
+    } else if (!persistenceEnabled) {
+        // This handles the case where getDb is called again before the first promise resolves.
+        await initializePersistence(dbInstance);
+    }
+    return dbInstance;
+};
+
+
+export { app, auth };

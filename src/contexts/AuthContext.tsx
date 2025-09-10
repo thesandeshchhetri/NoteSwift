@@ -14,7 +14,7 @@ import {
   type User as FirebaseUser
 } from 'firebase/auth';
 import { getDoc, doc, setDoc } from 'firebase/firestore';
-import { auth, db } from '@/lib/firebase';
+import { auth, getDb } from '@/lib/firebase';
 
 interface AuthContextType {
   user: Omit<User, 'password'> | null;
@@ -36,12 +36,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const handleUser = async (firebaseUser: FirebaseUser | null) => {
     if (firebaseUser) {
-      const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
-      if (userDoc.exists()) {
-        const userData = userDoc.data();
-        setUser({ id: firebaseUser.uid, email: firebaseUser.email!, username: userData.username });
-      } else {
-         setUser({ id: firebaseUser.uid, email: firebaseUser.email!, username: firebaseUser.email! });
+      try {
+        const db = await getDb();
+        const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
+        if (userDoc.exists()) {
+          const userData = userDoc.data();
+          setUser({ id: firebaseUser.uid, email: firebaseUser.email!, username: userData.username });
+        } else {
+           setUser({ id: firebaseUser.uid, email: firebaseUser.email!, username: firebaseUser.email! });
+        }
+      } catch (error) {
+          console.error("Failed to get user document:", error);
+          // Fallback or error handling
+          setUser({ id: firebaseUser.uid, email: firebaseUser.email!, username: firebaseUser.email! });
       }
     } else {
       setUser(null);
@@ -60,6 +67,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const userCredential = await createUserWithEmailAndPassword(auth, details.email, details.password!);
       const firebaseUser = userCredential.user;
       
+      const db = await getDb();
       await setDoc(doc(db, 'users', firebaseUser.uid), {
         username: details.username,
         email: details.email,
