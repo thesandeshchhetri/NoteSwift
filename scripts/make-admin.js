@@ -52,7 +52,14 @@ async function makeAdmin(email) {
     
     console.log(`Successfully assigned 'superadmin' role to ${email} (UID: ${uid})`);
   } catch (error) {
-    console.error('Error assigning admin role:', error.message);
+    if (error.code === 'auth/user-not-found') {
+        console.error(`
+Error: No user record found for the email "${email}".
+Please make sure you are using the email address you used to sign up for the application, not the service account email.
+`);
+    } else {
+        console.error('Error assigning admin role:', error.message);
+    }
     process.exit(1);
   }
 }
