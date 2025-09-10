@@ -95,9 +95,16 @@ export function NotesProvider({ children }: { children: ReactNode }) {
     }
     setIsProcessing(true);
     try {
+      let summary = '';
+      try {
+        const summaryResult = await summarizeNoteForSearch({ note: noteData.content });
+        summary = summaryResult.summary;
+      } catch (aiError) {
+        console.error('AI summarization failed:', aiError);
+        // Do not toast here, just fall back to empty summary
+      }
+
       const db = await getDb();
-      const { summary } = await summarizeNoteForSearch({ note: noteData.content });
-      
       const newNote = {
         userId: user.id,
         title: noteData.title,
