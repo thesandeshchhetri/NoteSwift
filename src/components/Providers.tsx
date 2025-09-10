@@ -9,14 +9,14 @@ import { AuthGuard } from './AuthGuard';
 export function Providers({ children }: { children: ReactNode }) {
   return (
     <AuthProvider>
-      <NotesProvider>
-        <FilterProvider>
-          <AuthGuard>
+      <AuthGuard>
+        <NotesProvider>
+          <FilterProvider>
             {children}
-          </AuthGuard>
-          <Toaster />
-        </FilterProvider>
-      </NotesProvider>
+            <Toaster />
+          </FilterProvider>
+        </NotesProvider>
+      </AuthGuard>
     </AuthProvider>
   );
 }
