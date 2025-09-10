@@ -46,9 +46,10 @@ async function makeAdmin(email) {
     const userRecord = await auth.getUserByEmail(email);
     const uid = userRecord.uid;
 
-    // Update the user's document in the 'users' collection in Firestore
+    // Update or create the user's document in the 'users' collection in Firestore
     const userRef = db.collection('users').doc(uid);
-    await userRef.update({ role: 'superadmin' });
+    // Use set with merge:true to create the document if it doesn't exist, or update it if it does.
+    await userRef.set({ role: 'superadmin' }, { merge: true });
     
     console.log(`Successfully assigned 'superadmin' role to ${email} (UID: ${uid})`);
   } catch (error) {
