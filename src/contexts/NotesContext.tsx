@@ -1,11 +1,11 @@
 'use client';
 
-import { createContext, useContext, useState, useEffect, type ReactNode, useCallback } from 'react';
+import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
 import type { Note } from '@/types';
 import { summarizeNoteForSearch } from '@/ai/flows/summarize-note-for-search';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from './AuthContext';
-import { collection, query, where, onSnapshot, addDoc, doc, updateDoc, deleteDoc, serverTimestamp, writeBatch, getDocs, Timestamp } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, addDoc, doc, updateDoc, deleteDoc, serverTimestamp, Timestamp } from 'firebase/firestore';
 import { getDb } from '@/lib/firebase';
 
 interface NotesContextType {
@@ -178,73 +178,6 @@ export function NotesProvider({ children }: { children: ReactNode }) {
         toast({ variant: 'destructive', title: 'Error', description: 'Could not permanently delete note.' });
     }
   };
-
-  const checkReminders = useCallback(async () => {
-    if (!user) return;
-
-    const now = new Date();
-    
-    try {
-      const db = await getDb();
-      const q = query(
-          collection(db, "notes"), 
-          where("userId", "==", user.id), 
-          where("reminderSet", "==", true),
-          where("reminderAt", "<=", Timestamp.fromDate(now))
-      );
-
-      const querySnapshot = await getDocs(q);
-      const batch = writeBatch(db);
-
-      if (!querySnapshot.empty) {
-        const emailjs = (await import('@emailjs/browser')).default;
-        
-        querySnapshot.forEach((document) => {
-            const note = toNote(document);
-            if (Notification.permission === 'granted') {
-              new Notification('Note Reminder', {
-                body: `This is a reminder for your note: "${note.title}"`,
-              });
-            }
-      
-            emailjs.send(
-                'Noteswift',
-                'Noteswift',
-                {
-                  to_email: user.email,
-                  subject: `Reminder for your note: ${note.title}`,
-                  message: `This is a reminder for your note titled "${note.title}". Please log in to NoteSwift to view it.`,
-                },
-                'ts-Fq9pfLF4zrjo8j'
-              ).catch(err => {
-                console.error('Failed to send reminder email:', err);
-              });
-            
-            const noteRef = doc(db, "notes", note.id);
-            batch.update(noteRef, { reminderSet: false, reminderAt: null });
-        });
-        
-        await batch.commit();
-      }
-    } catch (error) {
-        console.error("Error checking reminders:", error);
-    }
-  }, [user]);
-
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const requestNotificationPermission = () => {
-        if (Notification.permission !== 'granted' && Notification.permission !== 'denied') {
-          Notification.requestPermission();
-        }
-      };
-
-      requestNotificationPermission();
-      const intervalId = setInterval(checkReminders, 60000);
-      return () => clearInterval(intervalId);
-    }
-  }, [checkReminders]);
-
 
   return (
     <NotesContext.Provider value={{ notes, deletedNotes, addNote, updateNote, deleteNote, restoreNote, permanentlyDeleteNote, isProcessing }}>

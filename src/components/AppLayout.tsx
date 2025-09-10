@@ -22,6 +22,7 @@ import { useNotes } from '@/contexts/NotesContext';
 import { useFilter } from '@/contexts/FilterContext';
 import { Tag } from 'lucide-react';
 import Link from 'next/link';
+import { ReminderHandler } from './ReminderHandler';
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const { notes } = useNotes();
@@ -79,7 +80,10 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           <UserNav />
         </SidebarFooter>
       </Sidebar>
-      <SidebarInset>{children}</SidebarInset>
+      <SidebarInset>
+        {children}
+        <ReminderHandler />
+      </SidebarInset>
     </SidebarProvider>
   );
 }
