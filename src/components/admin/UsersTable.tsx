@@ -9,7 +9,6 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { useRouter } from "next/navigation";
 import { Skeleton } from "../ui/skeleton";
 import type { UserWithNoteCount } from "@/app/admin/page";
 import {
@@ -28,17 +27,13 @@ import { setUserRole } from "@/ai/flows/set-user-role";
 interface UsersTableProps {
   users: UserWithNoteCount[];
   loading: boolean;
+  onViewNotes: (user: UserWithNoteCount) => void;
 }
 
-export function UsersTable({ users, loading }: UsersTableProps) {
-  const router = useRouter();
+export function UsersTable({ users, loading, onViewNotes }: UsersTableProps) {
   const { user: currentUser } = useAuth();
   const { toast } = useToast();
   const [isUpdating, setIsUpdating] = useState<string | null>(null);
-
-  const handleViewNotes = (userId: string) => {
-    router.push(`/admin/users/${userId}`);
-  };
 
   const handleRoleChange = async (uid: string, newRole: 'admin' | 'user') => {
     setIsUpdating(uid);
@@ -116,7 +111,7 @@ export function UsersTable({ users, loading }: UsersTableProps) {
                   </TableCell>
                   <TableCell>{user.noteCount}</TableCell>
                   <TableCell className="text-right">
-                    <Button variant="outline" size="sm" onClick={() => handleViewNotes(user.id)}>
+                    <Button variant="outline" size="sm" onClick={() => onViewNotes(user)}>
                       View Notes
                     </Button>
                   </TableCell>
