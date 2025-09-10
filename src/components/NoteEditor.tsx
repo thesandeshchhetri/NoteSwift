@@ -71,19 +71,25 @@ export function NoteEditor({ isOpen, onOpenChange, note }: NoteEditorProps) {
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     const noteData = {
-        title: values.title,
-        content: values.content,
-        tags: values.tags ? values.tags.split(',').map(tag => tag.trim()).filter(Boolean) : [],
-        reminderSet: values.reminderSet,
-        reminderAt: values.reminderSet && values.reminderAt ? values.reminderAt : null,
+      title: values.title,
+      content: values.content,
+      tags: values.tags ? values.tags.split(',').map(tag => tag.trim()).filter(Boolean) : [],
+      reminderSet: values.reminderSet,
+      // Convert the Date to ISO string if reminder is set
+      reminderAt: values.reminderSet && values.reminderAt ? values.reminderAt.toISOString() : null,
     };
-
-    if (note) {
-      await updateNote(note.id, noteData);
-    } else {
-      await addNote(noteData);
+  
+    try {
+      if (note) {
+        await updateNote(note.id, noteData);
+      } else {
+        await addNote(noteData);
+      }
+      onOpenChange(false);
+    } catch (error) {
+      console.error('Error saving note:', error);
+      // Error toast is handled in the context
     }
-    onOpenChange(false);
   }
 
   return (
@@ -181,8 +187,7 @@ export function NoteEditor({ isOpen, onOpenChange, note }: NoteEditorProps) {
                                 className={cn(
                                   "w-[240px] pl-3 text-left font-normal",
                                   !field.value && "text-muted-foreground"
-                                )}
-                              >
+                                )}>
                                 {field.value ? (
                                   format(field.value, "PPP HH:mm")
                                 ) : (
@@ -198,7 +203,7 @@ export function NoteEditor({ isOpen, onOpenChange, note }: NoteEditorProps) {
                               selected={field.value ?? undefined}
                               onSelect={field.onChange}
                               disabled={(date) =>
-                                date < new Date(new Date().setHours(0,0,0,0)) 
+                                date < new Date(new Date().setHours(0, 0, 0, 0))
                               }
                               initialFocus
                             />

@@ -12,7 +12,7 @@ import { useRouter } from 'next/navigation';
 interface NotesContextType {
   notes: Note[];
   deletedNotes: Note[];
-  addNote: (noteData: Omit<Note, 'id' | 'summary' | 'createdAt' | 'updatedAt' | 'userId' | 'deletedAt'> & { reminderAt: Date | null }) => Promise<void>;
+  addNote: (noteData: Omit<Note, 'id' | 'summary' | 'createdAt' | 'updatedAt' | 'userId' | 'deletedAt'>) => Promise<void>;
   updateNote: (noteId: string, noteData: Partial<Omit<Note, 'id' | 'summary' | 'createdAt' | 'updatedAt' | 'userId' | 'deletedAt'>>) => Promise<void>;
   deleteNote: (noteId: string) => void;
   restoreNote: (noteId: string) => void;
@@ -90,13 +90,14 @@ export function NotesProvider({ children }: { children: ReactNode }) {
     }
   }, [user, toast, toNote]);
 
-  const addNote = async (noteData: Omit<Note, 'id' | 'summary' | 'createdAt' | 'updatedAt' | 'userId' | 'deletedAt'> & { reminderAt: Date | null }) => {
+  const addNote = async (noteData: Omit<Note, 'id' | 'summary' | 'createdAt' | 'updatedAt' | 'userId' | 'deletedAt'>) => {
     if (!user) {
       toast({ variant: 'destructive', title: 'Error', 'description': 'You must be logged in to add a note.' });
       return;
     }
-    setIsProcessing(true);
+    
     let noteRef;
+    setIsProcessing(true);
     try {
       const db = await getDb();
       const notePayload = {
@@ -108,29 +109,31 @@ export function NotesProvider({ children }: { children: ReactNode }) {
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
         reminderSet: noteData.reminderSet || false,
-        reminderAt: noteData.reminderAt ? Timestamp.fromDate(noteData.reminderAt) : null,
+        reminderAt: noteData.reminderAt ? Timestamp.fromDate(new Date(noteData.reminderAt)) : null,
         deletedAt: null,
       };
 
       noteRef = await addDoc(collection(db, 'notes'), notePayload);
       toast({ title: 'Success', description: 'Note created successfully.' });
       router.push('/');
+
+      // Non-blocking AI summarization
+      summarizeNoteForSearch({ note: noteData.content })
+        .then(summaryResult => {
+          if (noteRef) {
+            updateDoc(noteRef, { summary: summaryResult.summary });
+          }
+        })
+        .catch(aiError => {
+          console.error('Background AI summarization failed:', aiError);
+        });
+
     } catch (error) {
       console.error('Failed to add note:', error);
       toast({ variant: 'destructive', title: 'Error', description: 'Could not create note. Please try again.' });
-      throw error; // Re-throw to be caught by caller
+      throw error;
     } finally {
       setIsProcessing(false);
-    }
-    
-    // Non-blocking AI summarization
-    try {
-      const summaryResult = await summarizeNoteForSearch({ note: noteData.content });
-      if (noteRef) {
-        await updateDoc(noteRef, { summary: summaryResult.summary });
-      }
-    } catch (aiError) {
-      console.error('Background AI summarization failed:', aiError);
     }
   };
 
@@ -139,8 +142,9 @@ export function NotesProvider({ children }: { children: ReactNode }) {
         toast({ variant: 'destructive', title: 'Error', 'description': 'You must be logged in to update a note.' });
         return;
     }
-    setIsProcessing(true);
+    
     let noteRef;
+    setIsProcessing(true);
     try {
       const db = await getDb();
       noteRef = doc(db, 'notes', noteId);
@@ -155,24 +159,25 @@ export function NotesProvider({ children }: { children: ReactNode }) {
 
       await updateDoc(noteRef, updatePayload);
       toast({ title: 'Success', description: 'Note updated successfully.' });
+      
+      // Non-blocking AI summarization
+      if (noteData.content) {
+        summarizeNoteForSearch({ note: noteData.content })
+          .then(summaryResult => {
+            if (noteRef) {
+              updateDoc(noteRef, { summary: summaryResult.summary });
+            }
+          })
+          .catch(aiError => {
+            console.error('Background AI summarization failed during update:', aiError);
+          });
+      }
     } catch (error) {
       console.error('Failed to update note:', error);
       toast({ variant: 'destructive', title: 'Error', description: 'Could not update note. Please try again.' });
-      throw error; // Re-throw to be caught by caller
+      throw error;
     } finally {
         setIsProcessing(false);
-    }
-
-    // Non-blocking AI summarization
-    if (noteData.content) {
-      try {
-        const summaryResult = await summarizeNoteForSearch({ note: noteData.content });
-        if (noteRef) {
-            await updateDoc(noteRef, { summary: summaryResult.summary });
-        }
-      } catch(aiError) {
-         console.error('Background AI summarization failed during update:', aiError);
-      }
     }
   };
 
