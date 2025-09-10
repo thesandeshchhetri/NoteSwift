@@ -1,3 +1,4 @@
+'use server';
 import { initializeApp, getApps, cert, App } from 'firebase-admin/app';
 
 let app: App;

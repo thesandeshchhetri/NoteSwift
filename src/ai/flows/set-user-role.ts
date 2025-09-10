@@ -25,7 +25,7 @@ export async function setUserRole(input: SetUserRoleInput): Promise<void> {
 const setUserRoleFlow = ai.defineFlow(
   {
     name: 'setUserRoleFlow',
-    inputSchema: SetUserRole_InputSchema,
+    inputSchema: SetUserRoleInputSchema,
     outputSchema: z.void(),
     auth: async (auth, input) => {
         const req = auth as NextRequest;
