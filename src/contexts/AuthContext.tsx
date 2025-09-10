@@ -10,6 +10,7 @@ import {
   signInWithEmailAndPassword, 
   signOut,
   updatePassword as firebaseUpdatePassword,
+  sendPasswordResetEmail as firebaseSendPasswordResetEmail,
   type User as FirebaseUser
 } from 'firebase/auth';
 import { getDoc, doc, setDoc } from 'firebase/firestore';
@@ -19,9 +20,10 @@ interface AuthContextType {
   user: Omit<User, 'password'> | null;
   loading: boolean;
   signup: (details: Omit<User, 'id'>) => Promise<void>;
-  login: (credentials: Omit<User, 'id'>) => void;
+  login: (credentials: Omit<User, 'id' | 'username'>) => Promise<boolean>;
   logout: () => void;
   updatePassword: (newPassword: string) => void;
+  sendPasswordResetEmail: (email: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -63,7 +65,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         email: details.email,
       });
       
-      await handleUser(firebaseUser); // Immediately process user data
+      await handleUser(firebaseUser);
 
       toast({ title: 'Success', description: 'Account created successfully!' });
       router.push('/');
@@ -73,15 +75,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const login = async (credentials: Omit<User, 'id'>) => {
+  const login = async (credentials: Omit<User, 'id' | 'username'>): Promise<boolean> => {
     try {
       const userCredential = await signInWithEmailAndPassword(auth, credentials.email, credentials.password!);
-      await handleUser(userCredential.user); // Immediately process user data
+      await handleUser(userCredential.user);
 
       toast({ title: 'Success', description: 'Logged in successfully!' });
       router.push('/');
+      return true;
     } catch (error: any) {
       toast({ variant: 'destructive', title: 'Error', description: 'Invalid email or password.' });
+      return false;
     }
   };
   
@@ -107,8 +111,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const sendPasswordResetEmail = async (email: string) => {
+    try {
+      await firebaseSendPasswordResetEmail(auth, email);
+      toast({ title: 'Success', description: 'Password reset email sent. Please check your inbox.' });
+    } catch (error: any) {
+      toast({ variant: 'destructive', title: 'Error', description: error.message });
+    }
+  };
+
   return (
-    <AuthContext.Provider value={{ user, loading, signup, login, logout, updatePassword }}>
+    <AuthContext.Provider value={{ user, loading, signup, login, logout, updatePassword, sendPasswordResetEmail }}>
       {children}
     </AuthContext.Provider>
   );

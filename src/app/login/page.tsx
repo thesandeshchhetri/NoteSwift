@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -10,6 +11,8 @@ import { Input } from '@/components/ui/input';
 import { useAuth } from '@/contexts/AuthContext';
 import Link from 'next/link';
 import { Logo } from '@/components/Logo';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { AlertCircle } from 'lucide-react';
 
 const formSchema = z.object({
   email: z.string().email('Invalid email address'),
@@ -18,6 +21,8 @@ const formSchema = z.object({
 
 export default function LoginPage() {
   const { login } = useAuth();
+  const [loginAttempts, setLoginAttempts] = useState(0);
+
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -26,8 +31,11 @@ export default function LoginPage() {
     },
   });
 
-  function onSubmit(values: z.infer<typeof formSchema>) {
-    login(values);
+  async function onSubmit(values: z.infer<typeof formSchema>) {
+    const success = await login(values);
+    if (!success) {
+      setLoginAttempts(prev => prev + 1);
+    }
   }
 
   return (
@@ -41,6 +49,19 @@ export default function LoginPage() {
           <CardDescription>Enter your credentials to access your notes.</CardDescription>
         </CardHeader>
         <CardContent>
+          {loginAttempts >= 2 && (
+            <Alert variant="destructive" className="mb-4">
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle>Having Trouble?</AlertTitle>
+              <AlertDescription>
+                It looks like you're having issues logging in. You can{' '}
+                <Link href="/forgot-password" className="font-bold underline">
+                  reset your password
+                </Link>
+                .
+              </AlertDescription>
+            </Alert>
+          )}
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
               <FormField
@@ -61,7 +82,12 @@ export default function LoginPage() {
                 name="password"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Password</FormLabel>
+                    <div className="flex justify-between">
+                      <FormLabel>Password</FormLabel>
+                      <Link href="/forgot-password" className="text-sm font-medium text-primary hover:underline">
+                          Forgot Password?
+                      </Link>
+                    </div>
                     <FormControl>
                       <Input type="password" placeholder="••••••••" {...field} />
                     </FormControl>

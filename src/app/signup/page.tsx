@@ -144,6 +144,10 @@ export default function SignupPage() {
             <Link href="/login" className="underline text-primary">
               Log in
             </Link>
+             {' or '}
+            <Link href="/forgot-password" className="underline text-primary">
+              Forgot Password?
+            </Link>
           </div>
         </CardContent>
       </Card>
