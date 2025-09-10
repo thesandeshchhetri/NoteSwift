@@ -7,9 +7,24 @@
 const { initializeApp, cert } = require('firebase-admin/app');
 const { getFirestore } = require('firebase-admin/firestore');
 const { getAuth } = require('firebase-admin/auth');
+const fs = require('fs');
+const path = require('path');
+
+const serviceAccountPath = path.join(__dirname, 'serviceAccountKey.json');
+
+if (!fs.existsSync(serviceAccountPath)) {
+  console.error(`
+Error: Service account key file not found.
+Please download your Firebase project's service account key, rename it to 'serviceAccountKey.json', and place it in the 'scripts' directory.
+
+You can generate a service account key in your Firebase project settings:
+Project Settings > Service accounts > Generate new private key.
+`);
+  process.exit(1);
+}
 
 // IMPORTANT: Replace with your actual service account key file path
-const serviceAccount = require('./serviceAccountKey.json');
+const serviceAccount = require(serviceAccountPath);
 
 initializeApp({
   credential: cert(serviceAccount)
