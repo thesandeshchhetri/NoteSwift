@@ -60,6 +60,7 @@ Please make sure you are using the email address you used to sign up for the app
 `);
     } else {
         console.error('Error assigning admin role:', error.message);
+        console.error('Full error object:', error);
     }
     process.exit(1);
   }
