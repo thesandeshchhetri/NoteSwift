@@ -38,7 +38,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser: FirebaseUser | null) => {
       if (firebaseUser) {
         // Set basic user details first to unblock the UI
-        setUser({ id: firebaseUser.uid, email: firebaseUser.email!, username: firebaseUser.email! });
+        setUser({ id: firebaseUser.uid, email: firebaseUser.email!, username: firebaseUser.email!, role: 'user' });
         setLoading(false);
 
         // Then, fetch extended user details from Firestore in the background
@@ -47,7 +47,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
           if (userDoc.exists()) {
             const userData = userDoc.data();
-            setUser(prevUser => prevUser ? { ...prevUser, username: userData.username } : null);
+            setUser(prevUser => prevUser ? { ...prevUser, username: userData.username, role: userData.role || 'user' } : null);
           }
         } catch (error) {
             console.error("Failed to get user document:", error);
@@ -71,9 +71,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await setDoc(doc(db, 'users', firebaseUser.uid), {
         username: details.username,
         email: details.email,
+        role: 'user', // Default role
       });
       
-      setUser({ id: firebaseUser.uid, email: firebaseUser.email!, username: details.username });
+      setUser({ id: firebaseUser.uid, email: firebaseUser.email!, username: details.username, role: 'user' });
 
       toast({ title: 'Success', description: 'Account created successfully!' });
       router.push('/');

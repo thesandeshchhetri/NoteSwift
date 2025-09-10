@@ -3,8 +3,10 @@
 import { useAuth } from '@/contexts/AuthContext';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, type ReactNode } from 'react';
+import { Logo } from './Logo';
 
 const PUBLIC_ROUTES = ['/login', '/signup', '/forgot-password'];
+const ADMIN_ROUTES = ['/admin', '/admin/users'];
 
 export function AuthGuard({ children }: { children: ReactNode }) {
   const { user, loading } = useAuth();
@@ -17,23 +19,32 @@ export function AuthGuard({ children }: { children: ReactNode }) {
     }
 
     const isPublicRoute = PUBLIC_ROUTES.includes(pathname);
+    const isAdminRoute = ADMIN_ROUTES.some(route => pathname.startsWith(route));
 
-    // If there's no user and the route is not public, redirect to login
     if (!user && !isPublicRoute) {
       router.push('/login');
     }
 
-    // If there is a user and the route is public, redirect to the main app
     if (user && isPublicRoute) {
       router.push('/');
     }
+
+    if (user && isAdminRoute && user.role !== 'superadmin') {
+        router.push('/');
+    }
+
   }, [user, loading, pathname, router]);
 
   const isPublicRoute = PUBLIC_ROUTES.includes(pathname);
+  const isAdminRoute = ADMIN_ROUTES.some(route => pathname.startsWith(route));
 
-  // While loading, or if a redirect is imminent, render nothing.
-  if (loading || (!user && !isPublicRoute) || (user && isPublicRoute)) {
-    return null;
+  // While loading, or if a redirect is imminent, render a loading screen.
+  if (loading || (!user && !isPublicRoute) || (user && isPublicRoute) || (user && isAdminRoute && user.role !== 'superadmin')) {
+    return (
+        <div className="flex min-h-screen w-full items-center justify-center bg-background">
+            <Logo />
+        </div>
+    );
   }
 
   // Otherwise, render the children
