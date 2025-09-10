@@ -7,12 +7,14 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Users, FileText } from 'lucide-react';
 import { UsersTable } from '@/components/admin/UsersTable';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
 
 export interface UserWithNoteCount extends User {
     noteCount: number;
 }
 
 export default function AdminDashboardPage() {
+  const { user: currentUser } = useAuth();
   const [userCount, setUserCount] = useState(0);
   const [noteCount, setNoteCount] = useState(0);
   const [users, setUsers] = useState<UserWithNoteCount[]>([]);
@@ -20,6 +22,11 @@ export default function AdminDashboardPage() {
   const { toast } = useToast();
 
   useEffect(() => {
+    if (!currentUser || (currentUser.role !== 'admin' && currentUser.role !== 'superadmin')) {
+        setLoading(false);
+        return;
+    }
+
     let unsubscribe: () => void = () => {};
 
     async function fetchData() {
@@ -50,7 +57,7 @@ export default function AdminDashboardPage() {
                 setLoading(false);
             }, (error) => {
                 console.error("Error fetching users:", error);
-                toast({ variant: 'destructive', title: 'Error', description: 'Failed to fetch user data.' });
+                toast({ variant: 'destructive', title: 'Error', description: 'Failed to fetch user data. Check security rules.' });
                 setLoading(false);
             });
 
@@ -63,7 +70,7 @@ export default function AdminDashboardPage() {
     fetchData();
 
     return () => unsubscribe();
-  }, [toast]);
+  }, [currentUser, toast]);
   
 
   return (

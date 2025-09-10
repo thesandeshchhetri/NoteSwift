@@ -2,13 +2,31 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /notes/{noteId} {
-      allow read, write: if request.auth != null && request.auth.uid == resource.data.userId;
+
+    // Helper functions
+    function isSuperAdmin() {
+      return request.auth.token.superadmin == true;
     }
 
+    function isAdmin() {
+      return request.auth.token.role == 'admin';
+    }
+
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+
+    // Admins and Superadmins can read all user data
     match /users/{userId} {
-      allow read: if request.auth != null;
-      allow write: if request.auth != null && request.auth.uid == userId;
+      allow read: if isSuperAdmin() || isAdmin();
+      allow write: if isOwner(userId); // Users can update their own profiles
+    }
+    
+    // Admins and Superadmins can read all notes
+    // Users can only manage their own notes
+    match /notes/{noteId} {
+      allow read, write, delete: if isOwner(request.resource.data.userId) || isOwner(resource.data.userId);
+      allow list, read: if isSuperAdmin() || isAdmin();
     }
   }
 }
