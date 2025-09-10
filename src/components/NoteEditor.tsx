@@ -70,7 +70,7 @@ export function NoteEditor({ isOpen, onOpenChange, note }: NoteEditorProps) {
   }, [note, isOpen, form]);
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
-    onOpenChange(false); // Close dialog immediately
+    onOpenChange(false);
     const noteData = {
       title: values.title,
       content: values.content,
