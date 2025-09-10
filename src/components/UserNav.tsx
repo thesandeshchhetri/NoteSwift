@@ -12,19 +12,21 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useAuth } from '@/contexts/AuthContext';
-import { LogOut, Settings, Shield, User as UserIcon } from 'lucide-react';
+import { LogOut, Notebook, Settings, Shield, User as UserIcon } from 'lucide-react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 
 export function UserNav() {
   const { user, logout } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
 
   if (!user) {
     return null;
   }
   
   const userInitial = user.username ? user.username.charAt(0).toUpperCase() : (user.email ? user.email.charAt(0).toUpperCase() : '?');
+  const isAdminPage = pathname.startsWith('/admin');
 
   return (
     <DropdownMenu>
@@ -55,10 +57,17 @@ export function UserNav() {
             <span>Settings</span>
           </DropdownMenuItem>
           {(user.role === 'superadmin' || user.role === 'admin') && (
-            <DropdownMenuItem onSelect={() => router.push('/admin')}>
-              <Shield className="mr-2 h-4 w-4" />
-              <span>Admin Dashboard</span>
-            </DropdownMenuItem>
+            isAdminPage ? (
+              <DropdownMenuItem onSelect={() => router.push('/')}>
+                <Notebook className="mr-2 h-4 w-4" />
+                <span>Back to Notes</span>
+              </DropdownMenuItem>
+            ) : (
+              <DropdownMenuItem onSelect={() => router.push('/admin')}>
+                <Shield className="mr-2 h-4 w-4" />
+                <span>Admin Dashboard</span>
+              </DropdownMenuItem>
+            )
           )}
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
