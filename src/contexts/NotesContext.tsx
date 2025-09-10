@@ -39,8 +39,8 @@ export function NotesProvider({ children }: { children: ReactNode }) {
         content: data.content,
         tags: data.tags,
         summary: data.summary,
-        createdAt: (data.createdAt as Timestamp)?.toDate().toISOString() || new Date().toISOString(),
-        updatedAt: (data.updatedAt as Timestamp)?.toDate().toISOString() || new Date().toISOString(),
+        createdAt: data.createdAt instanceof Timestamp ? data.createdAt.toDate().toISOString() : new Date().toISOString(),
+        updatedAt: data.updatedAt instanceof Timestamp ? data.updatedAt.toDate().toISOString() : new Date().toISOString(),
         reminderSet: data.reminderSet,
         reminderAt: data.reminderAt ? (data.reminderAt as Timestamp).toDate().toISOString() : null,
         deletedAt: data.deletedAt ? (data.deletedAt as Timestamp).toDate().toISOString() : null,
@@ -61,8 +61,12 @@ export function NotesProvider({ children }: { children: ReactNode }) {
             setNotes(notesData);
           }, (error) => {
             console.error("Error fetching notes:", error);
-            toast({ variant: 'destructive', title: 'Error', description: 'Could not fetch notes.' });
+            toast({ variant: 'destructive', title: 'Error', description: 'Could not fetch notes. Check security rules.' });
           });
+
+          const thirtyDaysAgo = new Date();
+          thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+          const thirtyDaysAgoTimestamp = Timestamp.fromDate(thirtyDaysAgo);
 
           const deletedQ = query(collection(db, 'notes'), where('userId', '==', user.id), where('deletedAt', '!=', null));
           unsubscribeDeletedNotes = onSnapshot(deletedQ, (querySnapshot) => {
@@ -72,6 +76,17 @@ export function NotesProvider({ children }: { children: ReactNode }) {
             console.error("Error fetching deleted notes:", error);
             toast({ variant: 'destructive', title: 'Error', description: 'Could not fetch deleted notes.' });
           });
+
+          // Cleanup old deleted notes
+          const oldDeletedQ = query(collection(db, 'notes'), where('userId', '==', user.id), where('deletedAt', '<=', thirtyDaysAgoTimestamp));
+          getDocs(oldDeletedQ).then(snapshot => {
+            const batch = writeBatch(db);
+            snapshot.docs.forEach(doc => batch.delete(doc.ref));
+            if (!snapshot.empty) {
+              batch.commit();
+            }
+          });
+
         } catch (error) {
             console.error("Failed to setup listeners:", error);
             toast({ variant: 'destructive', title: 'Error', description: 'Could not set up note listeners.' });
