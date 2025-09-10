@@ -63,12 +63,11 @@ export function AuthGuard({ children }: { children: ReactNode }) {
   if (!isClient || loading) {
     return <LoadingScreen />;
   }
-
+  
   const isPublicRoute = PUBLIC_ROUTES.includes(pathname);
   if ((!user && !isPublicRoute) || (user && isPublicRoute)) {
       return <LoadingScreen />; // Show loading screen during redirect
   }
-
 
   return <>{children}</>;
 }
