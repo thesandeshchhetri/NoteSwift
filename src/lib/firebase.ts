@@ -17,17 +17,14 @@ const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-// Enable offline persistence
-(async () => {
-    try {
-        await enableIndexedDbPersistence(db);
-    } catch (err: any) {
-        if (err.code == 'failed-precondition') {
-            console.error("Firestore persistence failed: Multiple tabs open, persistence can only be enabled in one tab at a time.");
-        } else if (err.code == 'unimplemented') {
-            console.error("Firestore persistence failed: The current browser does not support all of the features required to enable persistence.");
-        }
+try {
+    enableIndexedDbPersistence(db);
+} catch (err: any) {
+    if (err.code == 'failed-precondition') {
+        console.error("Firestore persistence failed: Multiple tabs open, persistence can only be enabled in one tab at a time.");
+    } else if (err.code == 'unimplemented') {
+        console.error("Firestore persistence failed: The current browser does not support all of the features required to enable persistence.");
     }
-})();
+}
 
 export { app, auth, db };
