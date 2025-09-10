@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, type ReactNode, useCallback } from 'react';
 import type { Note } from '@/types';
 import { summarizeNoteForSearch } from '@/ai/flows/summarize-note-for-search';
 import { useToast } from '@/hooks/use-toast';
@@ -11,7 +11,7 @@ import { getDb } from '@/lib/firebase';
 interface NotesContextType {
   notes: Note[];
   deletedNotes: Note[];
-  addNote: (noteData: Omit<Note, 'id' | 'summary' | 'createdAt' | 'updatedAt' | 'userId' | 'deletedAt'>) => Promise<void>;
+  addNote: (noteData: Omit<Note, 'id' | 'summary' | 'createdAt' | 'updatedAt' | 'userId' | 'deletedAt'> & { reminderAt: Date | null }) => Promise<void>;
   updateNote: (noteId: string, noteData: Partial<Omit<Note, 'id' | 'summary' | 'createdAt' | 'updatedAt' | 'userId' | 'deletedAt'>>) => Promise<void>;
   deleteNote: (noteId: string) => void;
   restoreNote: (noteId: string) => void;
@@ -28,7 +28,7 @@ export function NotesProvider({ children }: { children: ReactNode }) {
   const [isProcessing, setIsProcessing] = useState(false);
   const { toast } = useToast();
 
-  const toNote = (document: any): Note => {
+  const toNote = useCallback((document: any): Note => {
     const data = document.data();
     return {
         id: document.id,
@@ -43,7 +43,7 @@ export function NotesProvider({ children }: { children: ReactNode }) {
         reminderAt: data.reminderAt ? (data.reminderAt as Timestamp).toDate().toISOString() : null,
         deletedAt: data.deletedAt ? (data.deletedAt as Timestamp).toDate().toISOString() : null,
     };
-  }
+  }, []);
 
   useEffect(() => {
     if (user) {
@@ -86,9 +86,9 @@ export function NotesProvider({ children }: { children: ReactNode }) {
       setNotes([]);
       setDeletedNotes([]);
     }
-  }, [user, toast]);
+  }, [user, toast, toNote]);
 
-  const addNote = async (noteData: Omit<Note, 'id' | 'summary' | 'createdAt' | 'updatedAt' | 'userId' | 'deletedAt'>) => {
+  const addNote = async (noteData: Omit<Note, 'id' | 'summary' | 'createdAt' | 'updatedAt' | 'userId' | 'deletedAt'> & { reminderAt: Date | null }) => {
     if (!user) {
       toast({ variant: 'destructive', title: 'Error', description: 'You must be logged in to add a note.' });
       return;
@@ -104,13 +104,13 @@ export function NotesProvider({ children }: { children: ReactNode }) {
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
         reminderSet: noteData.reminderSet || false,
-        reminderAt: noteData.reminderAt ? Timestamp.fromDate(new Date(noteData.reminderAt)) : null,
+        reminderAt: noteData.reminderAt ? Timestamp.fromDate(noteData.reminderAt) : null,
         deletedAt: null,
       });
       toast({ title: 'Success', description: 'Note created successfully.' });
     } catch (error) {
       console.error('Failed to add note:', error);
-      toast({ variant: 'destructive', title: 'Error', description: 'Could not generate note summary. Please try again.' });
+      toast({ variant: 'destructive', title: 'Error', description: 'Could not create note. Please try again.' });
     } finally {
       setIsProcessing(false);
     }

@@ -75,10 +75,13 @@ export function NoteEditor({ isOpen, onOpenChange, note }: NoteEditorProps) {
         content: values.content,
         tags: values.tags ? values.tags.split(',').map(tag => tag.trim()).filter(Boolean) : [],
         reminderSet: values.reminderSet,
-        reminderAt: values.reminderSet && values.reminderAt ? values.reminderAt.toISOString() : null,
+        reminderAt: values.reminderSet && values.reminderAt ? values.reminderAt : null,
     };
     if (note) {
-      await updateNote(note.id, noteData);
+      await updateNote(note.id, {
+        ...noteData,
+        reminderAt: noteData.reminderAt ? noteData.reminderAt.toISOString() : null
+      });
     } else {
       await addNote(noteData);
     }
