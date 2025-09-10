@@ -4,12 +4,13 @@ import type { Note, User } from '@/types';
 import { collection, getDocs, query, onSnapshot, where } from 'firebase/firestore';
 import { getDb } from '@/lib/firebase';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Users, FileText } from 'lucide-react';
+import { Users, FileText, Plus } from 'lucide-react';
 import { UsersTable } from '@/components/admin/UsersTable';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { UserNotesModal } from '@/components/admin/UserNotesModal';
-
+import { Button } from '@/components/ui/button';
+import { CreateUserModal } from '@/components/admin/CreateUserModal';
 
 export interface UserWithNoteCount extends User {
     noteCount: number;
@@ -24,7 +25,8 @@ export default function AdminDashboardPage() {
   const { toast } = useToast();
 
   const [selectedUser, setSelectedUser] = useState<UserWithNoteCount | null>(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isNotesModalOpen, setIsNotesModalOpen] = useState(false);
+  const [isCreateUserModalOpen, setIsCreateUserModalOpen] = useState(false);
   const [userNotes, setUserNotes] = useState<Note[]>([]);
   const [loadingNotes, setLoadingNotes] = useState(false);
 
@@ -47,7 +49,7 @@ export default function AdminDashboardPage() {
 
   const handleViewNotes = async (user: UserWithNoteCount) => {
     setSelectedUser(user);
-    setIsModalOpen(true);
+    setIsNotesModalOpen(true);
     setLoadingNotes(true);
     try {
         const db = await getDb();
@@ -135,6 +137,12 @@ export default function AdminDashboardPage() {
         <div className="flex-1 space-y-4 p-8 pt-6">
             <div className="flex items-center justify-between space-y-2">
                 <h2 className="text-3xl font-bold tracking-tight">Admin Dashboard</h2>
+                {currentUser?.role === 'superadmin' && (
+                    <Button onClick={() => setIsCreateUserModalOpen(true)}>
+                        <Plus className="mr-2 h-4 w-4" />
+                        Create User
+                    </Button>
+                )}
             </div>
             <div className="grid gap-4 md:grid-cols-2">
                 <Card>
@@ -160,12 +168,17 @@ export default function AdminDashboardPage() {
         </div>
         
         <UserNotesModal 
-            isOpen={isModalOpen}
-            onOpenChange={setIsModalOpen}
+            isOpen={isNotesModalOpen}
+            onOpenChange={setIsNotesModalOpen}
             user={selectedUser}
             notes={userNotes}
             loading={loadingNotes}
             onNoteDeleted={refreshUserNotes}
+        />
+
+        <CreateUserModal
+            isOpen={isCreateUserModalOpen}
+            onOpenChange={setIsCreateUserModalOpen}
         />
     </>
   );
