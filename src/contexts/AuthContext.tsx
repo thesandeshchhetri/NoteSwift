@@ -35,28 +35,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const { toast } = useToast();
 
   useEffect(() => {
-    const handleUser = async (firebaseUser: FirebaseUser | null) => {
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser: FirebaseUser | null) => {
       if (firebaseUser) {
+        // Set basic user details first to unblock the UI
+        setUser({ id: firebaseUser.uid, email: firebaseUser.email!, username: firebaseUser.email! });
+        setLoading(false);
+
+        // Then, fetch extended user details from Firestore in the background
         try {
           const db = await getDb();
           const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
           if (userDoc.exists()) {
             const userData = userDoc.data();
-            setUser({ id: firebaseUser.uid, email: firebaseUser.email!, username: userData.username });
-          } else {
-             setUser({ id: firebaseUser.uid, email: firebaseUser.email!, username: firebaseUser.email! });
+            setUser(prevUser => prevUser ? { ...prevUser, username: userData.username } : null);
           }
         } catch (error) {
             console.error("Failed to get user document:", error);
-            setUser({ id: firebaseUser.uid, email: firebaseUser.email!, username: firebaseUser.email! });
         }
       } else {
         setUser(null);
+        setLoading(false);
       }
-      setLoading(false);
-    }
+    });
   
-    const unsubscribe = onAuthStateChanged(auth, handleUser);
     return () => unsubscribe();
   }, []);
 
