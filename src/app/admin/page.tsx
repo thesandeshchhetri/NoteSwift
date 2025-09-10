@@ -1,17 +1,21 @@
 'use client';
 import { useEffect, useState } from 'react';
 import type { User } from '@/types';
-import { collection, getDocs, query, getCountFromServer } from 'firebase/firestore';
+import { collection, getDocs, query, getCountFromServer, where } from 'firebase/firestore';
 import { getDb } from '@/lib/firebase';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Users, FileText } from 'lucide-react';
 import { UsersTable } from '@/components/admin/UsersTable';
 import { useToast } from '@/hooks/use-toast';
 
+export interface UserWithNoteCount extends User {
+    noteCount: number;
+}
+
 export default function AdminDashboardPage() {
   const [userCount, setUserCount] = useState(0);
   const [noteCount, setNoteCount] = useState(0);
-  const [users, setUsers] = useState<User[]>([]);
+  const [users, setUsers] = useState<UserWithNoteCount[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
@@ -19,17 +23,28 @@ export default function AdminDashboardPage() {
     async function fetchData() {
         try {
             const db = await getDb();
+            
             // Fetch all users
             const usersQuery = query(collection(db, 'users'));
             const usersSnapshot = await getDocs(usersQuery);
             const usersList = usersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as User[];
-            setUsers(usersList);
-            setUserCount(usersList.length);
-    
+            
             // Fetch total note count
             const notesCollection = collection(db, 'notes');
-            const noteSnapshot = await getCountFromServer(notesCollection);
-            setNoteCount(noteSnapshot.data().count);
+            const totalNotesSnapshot = await getCountFromServer(notesCollection);
+            setNoteCount(totalNotesSnapshot.data().count);
+            setUserCount(usersList.length);
+
+            // Fetch note count for each user
+            const usersWithNoteCounts = await Promise.all(
+                usersList.map(async (user) => {
+                    const userNotesQuery = query(collection(db, 'notes'), where('userId', '==', user.id));
+                    const notesSnapshot = await getCountFromServer(userNotesQuery);
+                    return { ...user, noteCount: notesSnapshot.data().count };
+                })
+            );
+
+            setUsers(usersWithNoteCounts);
 
         } catch (err) {
             console.error(err);

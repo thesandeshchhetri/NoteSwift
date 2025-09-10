@@ -20,13 +20,15 @@ import { format, parseISO } from "date-fns";
 import { Button } from "../ui/button";
 import { Skeleton } from "../ui/skeleton";
 import { ScrollArea } from "../ui/scroll-area";
+import { Trash2 } from "lucide-react";
 
 interface UserNotesTableProps {
   notes: Note[];
   loading: boolean;
+  onDeleteNote: (note: Note) => void;
 }
 
-export function UserNotesTable({ notes, loading }: UserNotesTableProps) {
+export function UserNotesTable({ notes, loading, onDeleteNote }: UserNotesTableProps) {
     const sortedNotes = [...notes].sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
 
   return (
@@ -47,7 +49,7 @@ export function UserNotesTable({ notes, loading }: UserNotesTableProps) {
                     <TableCell><Skeleton className="h-5 w-40" /></TableCell>
                     <TableCell><Skeleton className="h-5 w-32" /></TableCell>
                     <TableCell><Skeleton className="h-5 w-24" /></TableCell>
-                    <TableCell className="text-right"><Skeleton className="h-8 w-20 ml-auto" /></TableCell>
+                    <TableCell className="text-right"><Skeleton className="h-8 w-36 ml-auto" /></TableCell>
                 </TableRow>
             ))
           ) : sortedNotes.length > 0 ? (
@@ -56,7 +58,7 @@ export function UserNotesTable({ notes, loading }: UserNotesTableProps) {
                 <TableCell className="font-medium">{note.title}</TableCell>
                 <TableCell>{format(parseISO(note.updatedAt), 'PPP')}</TableCell>
                 <TableCell>{note.tags.join(', ')}</TableCell>
-                <TableCell className="text-right">
+                <TableCell className="text-right space-x-2">
                 <Dialog>
                     <DialogTrigger asChild>
                         <Button variant="outline" size="sm">View Content</Button>
@@ -75,13 +77,17 @@ export function UserNotesTable({ notes, loading }: UserNotesTableProps) {
                         </ScrollArea>
                     </DialogContent>
                 </Dialog>
+                <Button variant="destructive" size="sm" onClick={() => onDeleteNote(note)}>
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Delete
+                </Button>
                 </TableCell>
               </TableRow>
             ))
           ) : (
             <TableRow>
               <TableCell colSpan={4} className="h-24 text-center">
-                This user has no notes.
+                This user has no active notes.
               </TableCell>
             </TableRow>
           )}
