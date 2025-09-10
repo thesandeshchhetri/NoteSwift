@@ -5,7 +5,7 @@ import type { Note } from '@/types';
 import { summarizeNoteForSearch } from '@/ai/flows/summarize-note-for-search';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from './AuthContext';
-import { collection, query, where, onSnapshot, addDoc, doc, updateDoc, deleteDoc, serverTimestamp, Timestamp, writeBatch } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, addDoc, doc, updateDoc, deleteDoc, serverTimestamp, Timestamp, writeBatch, getDocs } from 'firebase/firestore';
 import { getDb } from '@/lib/firebase';
 import { useRouter } from 'next/navigation';
 
