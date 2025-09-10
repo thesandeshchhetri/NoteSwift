@@ -2,33 +2,32 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Helper function to check for admin roles from the user's auth token
+
+    // Helper function to check for admin roles
     function isAdmin() {
-      return request.auth.token.role == 'admin' || request.auth.token.role == 'superadmin' || request.auth.token.superadmin == true;
+      return request.auth.token.superadmin == true || request.auth.token.role == 'admin';
     }
 
-    // Rules for the 'users' collection
+    // Users Collection
     match /users/{userId} {
-      // A user can create their own user document
+      // Allow any authenticated user to create their OWN user document
       allow create: if request.auth != null && request.auth.uid == userId;
-      // Only admins can read the full list of users
-      allow list: if isAdmin();
-      // A user can read their own document, and admins can read any user document
-      allow get: if request.auth != null && (request.auth.uid == userId || isAdmin());
-      // Admins can update any user document
-      allow update: if isAdmin();
-      // No one can delete user documents through the client SDK
-      allow delete: if false;
+
+      // Allow admins to read all user documents
+      allow read, write: if isAdmin();
+      
+      // Allow a user to read their own document
+      allow get: if request.auth != null && request.auth.uid == userId;
     }
 
-    // Rules for the 'notes' collection
+    // Notes Collection
     match /notes/{noteId} {
-      // A user can perform all operations on notes where their userId matches
-      allow read, write: if request.auth != null && request.auth.uid == resource.data.userId;
-      // Admins can also read any note
-      allow read: if isAdmin();
-       // Admins can also update any note (e.g., for soft deletion)
-      allow update: if isAdmin();
+      // Allow authenticated users to create/read/update/delete their OWN notes
+      allow read, update, delete: if request.auth != null && request.auth.uid == resource.data.userId;
+      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+      
+      // Allow admins to perform any action on any note
+      allow read, write: if isAdmin();
     }
   }
 }
