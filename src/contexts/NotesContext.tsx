@@ -118,7 +118,7 @@ export function NotesProvider({ children }: { children: ReactNode }) {
     } catch (error) {
       console.error('Failed to add note:', error);
       toast({ variant: 'destructive', title: 'Error', description: 'Could not create note. Please try again.' });
-      return;
+      throw error; // Re-throw to be caught by caller
     } finally {
       setIsProcessing(false);
     }
@@ -135,6 +135,10 @@ export function NotesProvider({ children }: { children: ReactNode }) {
   };
 
   const updateNote = async (noteId: string, noteData: Partial<Omit<Note, 'id' | 'summary' | 'createdAt' | 'updatedAt' | 'userId' | 'deletedAt'>>) => {
+    if (!user) {
+        toast({ variant: 'destructive', title: 'Error', 'description': 'You must be logged in to update a note.' });
+        return;
+    }
     setIsProcessing(true);
     let noteRef;
     try {
@@ -154,7 +158,7 @@ export function NotesProvider({ children }: { children: ReactNode }) {
     } catch (error) {
       console.error('Failed to update note:', error);
       toast({ variant: 'destructive', title: 'Error', description: 'Could not update note. Please try again.' });
-      return;
+      throw error; // Re-throw to be caught by caller
     } finally {
         setIsProcessing(false);
     }
