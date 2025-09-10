@@ -27,20 +27,21 @@ export default function AdminDashboardPage() {
         return;
     }
 
-    let unsubscribe: () => void = () => {};
-
-    async function fetchData() {
+    const setupListeners = async () => {
         try {
             const db = await getDb();
             
-            // Fetch total note count
-            const notesCollection = collection(db, 'notes');
-            const totalNotesSnapshot = await getCountFromServer(notesCollection);
-            setNoteCount(totalNotesSnapshot.data().count);
-            
-            // Listen for changes to users collection
-            const usersQuery = query(collection(db, 'users'));
-            unsubscribe = onSnapshot(usersQuery, async (usersSnapshot) => {
+            // Listener for total notes count
+            const notesUnsubscribe = onSnapshot(collection(db, 'notes'), 
+                (snapshot) => setNoteCount(snapshot.size),
+                (error) => {
+                    console.error("Error fetching notes count:", error);
+                    toast({ variant: 'destructive', title: 'Error', description: 'Failed to fetch total notes count. Check security rules.' });
+                }
+            );
+
+            // Listener for users collection
+            const usersUnsubscribe = onSnapshot(query(collection(db, 'users')), async (usersSnapshot) => {
                 const usersList = usersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as User[];
                 setUserCount(usersList.length);
 
@@ -48,8 +49,9 @@ export default function AdminDashboardPage() {
                 const usersWithNoteCounts = await Promise.all(
                     usersList.map(async (user) => {
                         const userNotesQuery = query(collection(db, 'notes'), where('userId', '==', user.id));
-                        const notesSnapshot = await getCountFromServer(userNotesQuery);
-                        return { ...user, noteCount: notesSnapshot.data().count };
+                        // Using getDocs for a one-time count per user update is fine here
+                        const notesSnapshot = await getDocs(userNotesQuery);
+                        return { ...user, noteCount: notesSnapshot.size };
                     })
                 );
 
@@ -61,15 +63,26 @@ export default function AdminDashboardPage() {
                 setLoading(false);
             });
 
+            return () => {
+                notesUnsubscribe();
+                usersUnsubscribe();
+            };
         } catch (err) {
             console.error(err);
-            toast({ variant: 'destructive', title: 'Error', description: 'Failed to fetch initial admin data.' });
+            toast({ variant: 'destructive', title: 'Error', description: 'Failed to set up admin data listeners.' });
             setLoading(false);
         }
     }
-    fetchData();
+    
+    const unsubscribePromise = setupListeners();
 
-    return () => unsubscribe();
+    return () => {
+        unsubscribePromise.then(unsubscribe => {
+            if (unsubscribe) {
+                unsubscribe();
+            }
+        });
+    };
   }, [currentUser, toast]);
   
 

@@ -2,31 +2,32 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    // Helper functions
-    function isSuperAdmin() {
-      return request.auth.token.superadmin == true;
-    }
-
+    
+    // Helper function to check for admin roles
     function isAdmin() {
-      return request.auth.token.role == 'admin';
+      return request.auth.token.superadmin == true || request.auth.token.role == 'admin';
     }
 
-    function isOwner(userId) {
-      return request.auth.uid == userId;
-    }
-
-    // Admins and Superadmins can read all user data
+    // Rules for the 'users' collection
     match /users/{userId} {
-      allow read: if isSuperAdmin() || isAdmin();
-      allow write: if isOwner(userId); // Users can update their own profiles
+      // Any authenticated user can create their own user document
+      allow create: if request.auth != null && request.auth.uid == userId;
+      
+      // Only the user themselves can read or update their own document
+      allow read, update: if request.auth != null && request.auth.uid == userId;
+
+      // Admins can read any user document
+      allow get, list: if request.auth != null && isAdmin();
     }
     
-    // Admins and Superadmins can read all notes
-    // Users can only manage their own notes
+    // Rules for the 'notes' collection
     match /notes/{noteId} {
-      allow read, write, delete: if isOwner(request.resource.data.userId) || isOwner(resource.data.userId);
-      allow list, read: if isSuperAdmin() || isAdmin();
+      // Users can only create, read, update, or delete their own notes
+      allow read, write: if request.auth != null && request.resource.data.userId == request.auth.uid;
+
+      // Admins can read any note
+      // Admins can update a note (e.g., to soft-delete it)
+      allow get, list, update: if request.auth != null && isAdmin();
     }
   }
 }

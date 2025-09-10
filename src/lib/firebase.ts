@@ -16,35 +16,29 @@ export const firebaseConfig = {
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 const auth = getAuth(app);
 
-let dbInstance: Firestore | null = null;
-let persistencePromise: Promise<void> | null = null;
-
-const initializePersistence = (db: Firestore) => {
-    if (typeof window === 'undefined' || persistencePromise) {
-        return;
-    }
-    persistencePromise = enableIndexedDbPersistence(db)
-        .catch((err) => {
-            if (err.code == 'failed-precondition') {
-                console.warn("Firestore persistence failed: Multiple tabs open.");
-            } else if (err.code == 'unimplemented') {
-                console.warn("Firestore persistence failed: Browser does not support all features.");
-            } else {
-                 console.error("Firestore persistence error:", err);
-            }
-        });
-};
-
+let db: Firestore | null = null;
+let persistenceEnabled = false;
 
 export const getDb = async (): Promise<Firestore> => {
-    if (!dbInstance) {
-        dbInstance = getFirestore(app);
-        initializePersistence(dbInstance);
+    if (db) return db;
+
+    db = getFirestore(app);
+
+    if (typeof window !== 'undefined' && !persistenceEnabled) {
+        persistenceEnabled = true;
+        try {
+            await enableIndexedDbPersistence(db);
+        } catch (err: any) {
+            if (err.code === 'failed-precondition') {
+                console.warn("Firestore persistence failed: Multiple tabs open.");
+            } else if (err.code === 'unimplemented') {
+                console.warn("Firestore persistence failed: Browser does not support all features.");
+            } else {
+                console.error("Firestore persistence error:", err);
+            }
+        }
     }
-    if (persistencePromise){
-      await persistencePromise
-    }
-    return dbInstance;
+    return db;
 };
 
 
