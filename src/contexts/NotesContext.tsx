@@ -62,7 +62,7 @@ export function NotesProvider({ children }: { children: ReactNode }) {
             toast({ variant: 'destructive', title: 'Error', description: 'Could not fetch notes.' });
           });
 
-          const deletedQ = query(collection(db, 'notes'), where('userId', '==', user.id), where('deletedAt', '!=', null));
+          const deletedQ = query(collection(db, 'notes'), where('userId', '==', null), where('deletedAt', '!=', null));
           unsubscribeDeletedNotes = onSnapshot(deletedQ, (querySnapshot) => {
             const deletedNotesData = querySnapshot.docs.map(toNote);
             setDeletedNotes(deletedNotesData);
@@ -114,16 +114,15 @@ export function NotesProvider({ children }: { children: ReactNode }) {
       toast({ title: 'Success', description: 'Note created successfully.' });
 
       // Run summarization in the background
-      summarizeNoteForSearch({ note: noteData.content })
-        .then(async (summaryResult) => {
-          if (noteRef) {
-            await updateDoc(noteRef, { summary: summaryResult.summary, updatedAt: serverTimestamp() });
-          }
-        })
-        .catch((aiError) => {
-          console.error('Background AI summarization failed:', aiError);
-          // Optional: You could add a quiet failure notification here if needed
-        });
+      try {
+        const summaryResult = await summarizeNoteForSearch({ note: noteData.content });
+        if (noteRef) {
+          await updateDoc(noteRef, { summary: summaryResult.summary, updatedAt: serverTimestamp() });
+        }
+      } catch (aiError) {
+        console.error('Background AI summarization failed:', aiError);
+        // Optional: You could add a quiet failure notification here if needed
+      }
 
     } catch (error) {
       console.error('Failed to add note:', error);

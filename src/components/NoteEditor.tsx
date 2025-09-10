@@ -85,9 +85,7 @@ export function NoteEditor({ isOpen, onOpenChange, note }: NoteEditorProps) {
     } else {
       await addNote(noteData);
     }
-    if (!isProcessing) {
-      onOpenChange(false);
-    }
+    onOpenChange(false);
   }
 
   return (
