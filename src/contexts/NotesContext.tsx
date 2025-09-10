@@ -72,6 +72,7 @@ export function NotesProvider({ children }: { children: ReactNode }) {
           });
         } catch (error) {
             console.error("Failed to setup listeners:", error);
+            toast({ variant: 'destructive', title: 'Error', description: 'Could not set up note listeners.' });
         }
       };
 

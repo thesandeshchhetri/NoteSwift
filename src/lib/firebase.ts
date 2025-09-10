@@ -19,42 +19,30 @@ const auth = getAuth(app);
 let dbInstance: Firestore | null = null;
 let persistencePromise: Promise<void> | null = null;
 
-const initializePersistence = async (db: Firestore) => {
-    if (typeof window === 'undefined') {
-        // We are on the server, don't try to enable persistence.
-        return Promise.resolve();
+const initializePersistence = (db: Firestore) => {
+    if (typeof window === 'undefined' || persistencePromise) {
+        return;
     }
-
-    if (persistencePromise) {
-        return persistencePromise;
-    }
-
-    persistencePromise = new Promise(async (resolve, reject) => {
-        try {
-            await enableIndexedDbPersistence(db);
-            resolve();
-        } catch (err: any) {
+    persistencePromise = enableIndexedDbPersistence(db)
+        .catch((err) => {
             if (err.code == 'failed-precondition') {
-                console.warn("Firestore persistence failed: Multiple tabs open. Operations will be in memory.");
-                resolve(); 
+                console.warn("Firestore persistence failed: Multiple tabs open.");
             } else if (err.code == 'unimplemented') {
                 console.warn("Firestore persistence failed: Browser does not support all features.");
-                resolve();
             } else {
-                console.error("Firestore persistence error:", err);
-                reject(err);
+                 console.error("Firestore persistence error:", err);
             }
-        }
-    });
-    return persistencePromise;
+        });
 };
+
 
 export const getDb = async (): Promise<Firestore> => {
     if (!dbInstance) {
         dbInstance = getFirestore(app);
-        await initializePersistence(dbInstance);
-    } else if (!persistencePromise) {
-        await initializePersistence(dbInstance);
+        initializePersistence(dbInstance);
+    }
+    if (persistencePromise){
+      await persistencePromise
     }
     return dbInstance;
 };

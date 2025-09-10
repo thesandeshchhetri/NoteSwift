@@ -34,29 +34,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
   const { toast } = useToast();
 
-  const handleUser = async (firebaseUser: FirebaseUser | null) => {
-    if (firebaseUser) {
-      try {
-        const db = await getDb();
-        const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
-        if (userDoc.exists()) {
-          const userData = userDoc.data();
-          setUser({ id: firebaseUser.uid, email: firebaseUser.email!, username: userData.username });
-        } else {
-           setUser({ id: firebaseUser.uid, email: firebaseUser.email!, username: firebaseUser.email! });
-        }
-      } catch (error) {
-          console.error("Failed to get user document:", error);
-          // Fallback or error handling
-          setUser({ id: firebaseUser.uid, email: firebaseUser.email!, username: firebaseUser.email! });
-      }
-    } else {
-      setUser(null);
-    }
-    setLoading(false);
-  }
-
   useEffect(() => {
+    const handleUser = async (firebaseUser: FirebaseUser | null) => {
+      if (firebaseUser) {
+        try {
+          const db = await getDb();
+          const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
+          if (userDoc.exists()) {
+            const userData = userDoc.data();
+            setUser({ id: firebaseUser.uid, email: firebaseUser.email!, username: userData.username });
+          } else {
+             setUser({ id: firebaseUser.uid, email: firebaseUser.email!, username: firebaseUser.email! });
+          }
+        } catch (error) {
+            console.error("Failed to get user document:", error);
+            setUser({ id: firebaseUser.uid, email: firebaseUser.email!, username: firebaseUser.email! });
+        }
+      } else {
+        setUser(null);
+      }
+      setLoading(false);
+    }
+  
     const unsubscribe = onAuthStateChanged(auth, handleUser);
     return () => unsubscribe();
   }, []);
@@ -73,7 +72,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         email: details.email,
       });
       
-      await handleUser(firebaseUser);
+      setUser({ id: firebaseUser.uid, email: firebaseUser.email!, username: details.username });
 
       toast({ title: 'Success', description: 'Account created successfully!' });
       router.push('/');
@@ -85,9 +84,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = async (credentials: Omit<User, 'id' | 'username'>): Promise<boolean> => {
     try {
-      const userCredential = await signInWithEmailAndPassword(auth, credentials.email, credentials.password!);
-      await handleUser(userCredential.user);
-
+      await signInWithEmailAndPassword(auth, credentials.email, credentials.password!);
+      // onAuthStateChanged will handle setting the user
       toast({ title: 'Success', description: 'Logged in successfully!' });
       router.push('/');
       return true;

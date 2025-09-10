@@ -33,6 +33,9 @@ export default function Home() {
   }, [notes]);
   
   const filteredNotesBySearch = React.useMemo(() => {
+    if (!searchTerm) {
+      return activeNotes;
+    }
     return activeNotes.filter(note => {
       const searchLower = searchTerm.toLowerCase();
       return (
