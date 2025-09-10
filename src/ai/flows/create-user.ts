@@ -41,8 +41,10 @@ const createUserFlow = ai.defineFlow(
         await initFirebaseAdmin();
         const decodedToken = await getAuth().verifyIdToken(idToken);
         
-        if (decodedToken.superadmin !== true) {
-            throw new Error('Only superadmins can create users.');
+        // Superadmins and admins should be able to create users.
+        // The custom claim is 'role', not 'superadmin'.
+        if (decodedToken.role !== 'superadmin' && decodedToken.role !== 'admin') {
+            throw new Error('Only admins or superadmins can create users.');
         }
     },
   },
