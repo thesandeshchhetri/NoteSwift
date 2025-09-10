@@ -34,7 +34,7 @@ interface NoteEditorProps {
 }
 
 export function NoteEditor({ isOpen, onOpenChange, note }: NoteEditorProps) {
-  const { addNote, updateNote, isProcessing } = useNotes();
+  const { addNote, updateNote } = useNotes();
   
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -70,27 +70,19 @@ export function NoteEditor({ isOpen, onOpenChange, note }: NoteEditorProps) {
   }, [note, isOpen, form]);
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
-    onOpenChange(false);
-    
+    onOpenChange(false); // Close dialog immediately
     const noteData = {
       title: values.title,
       content: values.content,
       tags: values.tags ? values.tags.split(',').map(tag => tag.trim()).filter(Boolean) : [],
       reminderSet: values.reminderSet,
-      // Convert the Date to ISO string if reminder is set
       reminderAt: values.reminderSet && values.reminderAt ? values.reminderAt.toISOString() : null,
     };
   
-    try {
-      if (note) {
-        await updateNote(note.id, noteData);
-      } else {
-        await addNote(noteData);
-      }
-    } catch (error) {
-      console.error('Error saving note:', error);
-      // Error toast is handled in the context, but we need to reopen the dialog on failure
-      onOpenChange(true);
+    if (note) {
+      await updateNote(note.id, noteData);
+    } else {
+      await addNote(noteData);
     }
   }
 
@@ -228,11 +220,10 @@ export function NoteEditor({ isOpen, onOpenChange, note }: NoteEditorProps) {
               </div>
             </ScrollArea>
             <DialogFooter className="mt-4">
-              <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isProcessing}>
+              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
                 Cancel
               </Button>
-              <Button type="submit" disabled={isProcessing}>
-                {isProcessing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              <Button type="submit">
                 {note ? 'Save Changes' : 'Create Note'}
               </Button>
             </DialogFooter>
