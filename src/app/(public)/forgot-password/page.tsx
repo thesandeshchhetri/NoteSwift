@@ -10,19 +10,30 @@ import { Input } from '@/components/ui/input';
 import { useAuth } from '@/contexts/AuthContext';
 import Link from 'next/link';
 import { Logo } from '@/components/Logo';
+import { useRouter } from 'next/navigation';
+import { useEffect } from 'react';
 
 const formSchema = z.object({
   email: z.string().email('Invalid email address'),
 });
 
 export default function ForgotPasswordPage() {
-  const { sendPasswordResetEmail } = useAuth();
+  const { user, sendPasswordResetEmail } = useAuth();
+  const router = useRouter();
+
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       email: '',
     },
   });
+
+  useEffect(() => {
+    if (user) {
+      router.push('/');
+    }
+  }, [user, router]);
+
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     await sendPasswordResetEmail(values.email);

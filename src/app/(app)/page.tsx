@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { AppLayout } from '@/components/AppLayout';
+import { AppLayout as MainAppLayout } from '@/components/AppLayout';
 import { NoteList } from '@/components/NoteList';
 import { Input } from '@/components/ui/input';
 import { useFilter } from '@/contexts/FilterContext';
@@ -45,7 +45,7 @@ export default function Home() {
 
 
   return (
-    <AppLayout>
+    <MainAppLayout>
       <div className="flex flex-col h-full bg-background">
         <header className="flex items-center justify-between p-4 border-b">
           <h1 className="text-xl font-semibold">My Notes</h1>
@@ -71,6 +71,6 @@ export default function Home() {
         onOpenChange={setIsEditorOpen}
         note={editingNote}
       />
-    </AppLayout>
+    </MainAppLayout>
   );
 }

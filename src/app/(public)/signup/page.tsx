@@ -11,6 +11,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import Link from 'next/link';
 import { CheckCircle2, Circle } from 'lucide-react';
 import { Logo } from '@/components/Logo';
+import { useRouter } from 'next/navigation';
+import { useEffect } from 'react';
 
 const passwordValidation = new RegExp(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]).{8,}$/);
 
@@ -37,7 +39,8 @@ const PasswordRequirement = ({ meets, text }: { meets: boolean; text: string }) 
 );
 
 export default function SignupPage() {
-  const { signup } = useAuth();
+  const { user, signup } = useAuth();
+  const router = useRouter();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -49,6 +52,12 @@ export default function SignupPage() {
     },
     mode: 'all',
   });
+
+  useEffect(() => {
+    if (user) {
+      router.push('/');
+    }
+  }, [user, router]);
 
   const { password } = form.watch();
   const passwordCriteria = {

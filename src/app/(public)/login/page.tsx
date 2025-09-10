@@ -13,6 +13,8 @@ import Link from 'next/link';
 import { Logo } from '@/components/Logo';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertCircle } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { useEffect } from 'react';
 
 const formSchema = z.object({
   email: z.string().email('Invalid email address'),
@@ -20,8 +22,9 @@ const formSchema = z.object({
 });
 
 export default function LoginPage() {
-  const { login } = useAuth();
+  const { user, login } = useAuth();
   const [loginAttempts, setLoginAttempts] = useState(0);
+  const router = useRouter();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -30,6 +33,13 @@ export default function LoginPage() {
       password: '',
     },
   });
+
+  useEffect(() => {
+    if (user) {
+      router.push('/');
+    }
+  }, [user, router]);
+
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     const success = await login(values);

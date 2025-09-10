@@ -3,7 +3,7 @@
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { AppLayout } from '@/components/AppLayout';
+import { AppLayout as MainAppLayout } from '@/components/AppLayout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -11,13 +11,14 @@ import { Input } from '@/components/ui/input';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useNotes } from '@/contexts/NotesContext';
 import { format, parseISO } from 'date-fns';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { RotateCcw, Trash2 } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 
 const formSchema = z.object({
   newPassword: z.string().min(6, 'Password must be at least 6 characters'),
@@ -77,6 +78,8 @@ function RecentlyDeletedTab() {
 export default function SettingsPage() {
   const { user, updatePassword } = useAuth();
   const router = useRouter();
+  const { toast } = useToast();
+
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -102,7 +105,7 @@ export default function SettingsPage() {
   }
 
   return (
-    <AppLayout>
+    <MainAppLayout>
       <div className="flex flex-col h-full bg-background">
         <header className="flex items-center justify-between p-4 border-b">
           <h1 className="text-xl font-semibold">Settings</h1>
@@ -175,6 +178,6 @@ export default function SettingsPage() {
             </Tabs>
         </main>
       </div>
-    </AppLayout>
+    </MainAppLayout>
   );
 }
