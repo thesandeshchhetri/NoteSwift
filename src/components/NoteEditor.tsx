@@ -79,14 +79,11 @@ export function NoteEditor({ isOpen, onOpenChange, note }: NoteEditorProps) {
     };
 
     if (note) {
-      updateNote(note.id, noteData).then(() => {
-        onOpenChange(false);
-      });
+      await updateNote(note.id, noteData);
     } else {
-      addNote(noteData).then(() => {
-        onOpenChange(false);
-      });
+      await addNote(noteData);
     }
+    onOpenChange(false);
   }
 
   return (
