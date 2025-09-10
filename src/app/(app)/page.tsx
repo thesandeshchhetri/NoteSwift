@@ -10,9 +10,10 @@ import { Button } from '@/components/ui/button';
 import { useNotes } from '@/contexts/NotesContext';
 import { NoteEditor } from '@/components/NoteEditor';
 import type { Note } from '@/types';
+import { TagSidebar } from '@/components/TagSidebar';
 
 export default function Home() {
-  const { searchTerm, setSearchTerm } = useFilter();
+  const { searchTerm, setSearchTerm, selectedTag } = useFilter();
   const [isEditorOpen, setIsEditorOpen] = React.useState(false);
   const [editingNote, setEditingNote] = React.useState<Omit<Note, 'userId'> | null>(null);
   const { notes } = useNotes();
@@ -31,7 +32,7 @@ export default function Home() {
     return notes.filter(note => !note.deletedAt);
   }, [notes]);
   
-  const filteredNotes = React.useMemo(() => {
+  const filteredNotesBySearch = React.useMemo(() => {
     return activeNotes.filter(note => {
       const searchLower = searchTerm.toLowerCase();
       return (
@@ -43,9 +44,23 @@ export default function Home() {
     });
   }, [activeNotes, searchTerm]);
 
+  const filteredNotesByTag = React.useMemo(() => {
+    if (selectedTag) {
+      return filteredNotesBySearch.filter(note => note.tags.includes(selectedTag));
+    }
+    return filteredNotesBySearch;
+  }, [filteredNotesBySearch, selectedTag]);
+
+  const allTags = React.useMemo(() => {
+    const tags = new Set<string>();
+    activeNotes.forEach(note => {
+      note.tags.forEach(tag => tags.add(tag));
+    });
+    return Array.from(tags).sort();
+  }, [activeNotes]);
 
   return (
-    <MainAppLayout>
+    <MainAppLayout sidebarContent={<TagSidebar tags={allTags} />}>
       <div className="flex flex-col h-full bg-background">
         <header className="flex items-center justify-between p-4 border-b">
           <h1 className="text-xl font-semibold">My Notes</h1>
@@ -63,7 +78,7 @@ export default function Home() {
           </div>
         </header>
         <main className="flex-1 overflow-y-auto p-4 md:p-6">
-          <NoteList notes={filteredNotes} onEditNote={handleEditNote} />
+          <NoteList notes={filteredNotesByTag} onEditNote={handleEditNote} />
         </main>
       </div>
       <NoteEditor

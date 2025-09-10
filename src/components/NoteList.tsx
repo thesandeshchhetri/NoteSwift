@@ -12,16 +12,12 @@ interface NoteListProps {
 export function NoteList({ notes, onEditNote }: NoteListProps) {
   const { selectedTag } = useFilter();
 
-  const filteredNotes = useMemo(() => {
-    let sortedNotes = [...notes].sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
-    
-    if (selectedTag) {
-      return sortedNotes.filter(note => note.tags.includes(selectedTag));
-    }
-    return sortedNotes;
-  }, [notes, selectedTag]);
+  const sortedNotes = useMemo(() => {
+    return [...notes].sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+  }, [notes]);
 
-  if (filteredNotes.length === 0) {
+
+  if (sortedNotes.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center h-full text-center">
         <div className="w-24 h-24 mb-4 text-muted-foreground">
@@ -39,7 +35,7 @@ export function NoteList({ notes, onEditNote }: NoteListProps) {
 
   return (
     <div className="grid gap-4 md:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-      {filteredNotes.map(note => (
+      {sortedNotes.map(note => (
         <NoteCard key={note.id} note={note} onEdit={onEditNote} />
       ))}
     </div>
