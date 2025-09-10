@@ -66,9 +66,16 @@ export function AuthGuard({ children }: { children: ReactNode }) {
     }
   }, [user, loading, pathname, router]);
 
-  const isPublicRoute = PUBLIC_ROUTES.includes(pathname);
-  if (loading || (!user && !isPublicRoute) || (user && isPublicRoute)) {
+  if (loading) {
     return <LoadingScreen />;
+  }
+
+  const isPublicRoute = PUBLIC_ROUTES.includes(pathname);
+  if (!user && !isPublicRoute) {
+    return <LoadingScreen />; // Show loading screen while redirecting
+  }
+  if (user && isPublicRoute) {
+    return <LoadingScreen />; // Show loading screen while redirecting
   }
 
   return <>{children}</>;
