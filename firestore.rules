@@ -2,32 +2,33 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    // Helper function to check for admin roles
+    // Helper function to check for admin roles from the user's auth token
     function isAdmin() {
-      return request.auth.token.superadmin == true || request.auth.token.role == 'admin';
+      return request.auth.token.role == 'admin' || request.auth.token.role == 'superadmin' || request.auth.token.superadmin == true;
     }
 
     // Rules for the 'users' collection
     match /users/{userId} {
-      // Any authenticated user can create their own user document
+      // A user can create their own user document
       allow create: if request.auth != null && request.auth.uid == userId;
-      
-      // Only the user themselves can read or update their own document
-      allow read, update: if request.auth != null && request.auth.uid == userId;
-
-      // Admins can read any user document
-      allow get, list: if request.auth != null && isAdmin();
+      // Only admins can read the full list of users
+      allow list: if isAdmin();
+      // A user can read their own document, and admins can read any user document
+      allow get: if request.auth != null && (request.auth.uid == userId || isAdmin());
+      // Admins can update any user document
+      allow update: if isAdmin();
+      // No one can delete user documents through the client SDK
+      allow delete: if false;
     }
-    
+
     // Rules for the 'notes' collection
     match /notes/{noteId} {
-      // Users can only create, read, update, or delete their own notes
-      allow read, write: if request.auth != null && request.resource.data.userId == request.auth.uid;
-
-      // Admins can read any note
-      // Admins can update a note (e.g., to soft-delete it)
-      allow get, list, update: if request.auth != null && isAdmin();
+      // A user can perform all operations on notes where their userId matches
+      allow read, write: if request.auth != null && request.auth.uid == resource.data.userId;
+      // Admins can also read any note
+      allow read: if isAdmin();
+       // Admins can also update any note (e.g., for soft deletion)
+      allow update: if isAdmin();
     }
   }
 }
