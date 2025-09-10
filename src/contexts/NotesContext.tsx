@@ -1,7 +1,7 @@
 'use client';
 
 import { createContext, useContext, useState, useEffect, type ReactNode, useCallback } from 'react';
-import type { Note, User } from '@/types';
+import type { Note } from '@/types';
 import { summarizeNoteForSearch } from '@/ai/flows/summarize-note-for-search';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from './AuthContext';
@@ -28,10 +28,10 @@ export function NotesProvider({ children }: { children: ReactNode }) {
   const [isProcessing, setIsProcessing] = useState(false);
   const { toast } = useToast();
 
-  const toNote = (doc: any): Note => {
-    const data = doc.data();
+  const toNote = (document: any): Note => {
+    const data = document.data();
     return {
-        id: doc.id,
+        id: document.id,
         userId: data.userId,
         title: data.title,
         content: data.content,
@@ -73,7 +73,7 @@ export function NotesProvider({ children }: { children: ReactNode }) {
         } catch (error) {
             console.error("Failed to setup listeners:", error);
         }
-      }
+      };
 
       setupListeners();
 
@@ -180,7 +180,7 @@ export function NotesProvider({ children }: { children: ReactNode }) {
   };
 
   const checkReminders = useCallback(async () => {
-    if (!user || typeof window === 'undefined') return;
+    if (!user) return;
 
     const now = new Date();
     
@@ -199,7 +199,7 @@ export function NotesProvider({ children }: { children: ReactNode }) {
       if (!querySnapshot.empty) {
         const emailjs = (await import('@emailjs/browser')).default;
         
-        querySnapshot.forEach(async (document) => {
+        querySnapshot.forEach((document) => {
             const note = toNote(document);
             if (Notification.permission === 'granted') {
               new Notification('Note Reminder', {
@@ -207,8 +207,7 @@ export function NotesProvider({ children }: { children: ReactNode }) {
               });
             }
       
-            try {
-              await emailjs.send(
+            emailjs.send(
                 'Noteswift',
                 'Noteswift',
                 {
@@ -217,10 +216,9 @@ export function NotesProvider({ children }: { children: ReactNode }) {
                   message: `This is a reminder for your note titled "${note.title}". Please log in to NoteSwift to view it.`,
                 },
                 'ts-Fq9pfLF4zrjo8j'
-              );
-            } catch (err) {
-              console.error('Failed to send reminder email:', err);
-            }
+              ).catch(err => {
+                console.error('Failed to send reminder email:', err);
+              });
             
             const noteRef = doc(db, "notes", note.id);
             batch.update(noteRef, { reminderSet: false, reminderAt: null });
