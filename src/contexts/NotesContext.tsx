@@ -97,16 +97,21 @@ export function NotesProvider({ children }: { children: ReactNode }) {
     try {
       const db = await getDb();
       const { summary } = await summarizeNoteForSearch({ note: noteData.content });
-      await addDoc(collection(db, 'notes'), {
-        ...noteData,
+      
+      const newNote = {
         userId: user.id,
-        summary,
+        title: noteData.title,
+        content: noteData.content,
+        tags: noteData.tags,
+        summary: summary,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
         reminderSet: noteData.reminderSet || false,
         reminderAt: noteData.reminderAt ? Timestamp.fromDate(noteData.reminderAt) : null,
         deletedAt: null,
-      });
+      };
+
+      await addDoc(collection(db, 'notes'), newNote);
       toast({ title: 'Success', description: 'Note created successfully.' });
     } catch (error) {
       console.error('Failed to add note:', error);
