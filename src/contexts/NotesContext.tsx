@@ -12,7 +12,7 @@ interface NotesContextType {
   notes: Note[];
   deletedNotes: Note[];
   addNote: (noteData: Omit<Note, 'id' | 'summary' | 'createdAt' | 'updatedAt' | 'userId' | 'deletedAt'> & { reminderAt: Date | null }) => Promise<void>;
-  updateNote: (noteId: string, noteData: Partial<Omit<Note, 'id' | 'summary' | 'createdAt' | 'updatedAt' | 'userId' | 'deletedAt'>>) => Promise<void>;
+  updateNote: (noteId: string, noteData: Partial<Omit<Note, 'id' | 'summary' | 'createdAt' | 'updatedAt' | 'userId' | 'deletedAt'>> & { reminderAt?: string | null }) => Promise<void>;
   deleteNote: (noteId: string) => void;
   restoreNote: (noteId: string) => void;
   permanentlyDeleteNote: (noteId: string) => void;
@@ -96,7 +96,7 @@ export function NotesProvider({ children }: { children: ReactNode }) {
     setIsProcessing(true);
     try {
       const db = await getDb();
-      const noteRef = await addDoc(collection(db, 'notes'), {
+      const notePayload = {
         userId: user.id,
         title: noteData.title,
         content: noteData.content,
@@ -107,17 +107,18 @@ export function NotesProvider({ children }: { children: ReactNode }) {
         reminderSet: noteData.reminderSet || false,
         reminderAt: noteData.reminderAt ? Timestamp.fromDate(noteData.reminderAt) : null,
         deletedAt: null,
-      });
+      };
+
+      const noteRef = await addDoc(collection(db, 'notes'), notePayload);
       toast({ title: 'Success', description: 'Note created successfully.' });
-      
-      // Non-blocking AI summarization
+
+      // Non-blocking AI summarization in the background
       summarizeNoteForSearch({ note: noteData.content })
         .then(summaryResult => {
-          if (noteRef) {
             updateDoc(noteRef, { summary: summaryResult.summary, updatedAt: serverTimestamp() });
-          }
         })
         .catch(aiError => {
+          // Log AI error but don't bother the user, the note is already saved.
           console.error('Background AI summarization failed:', aiError);
         });
 
@@ -129,7 +130,7 @@ export function NotesProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const updateNote = async (noteId: string, noteData: Partial<Omit<Note, 'id' | 'summary' | 'createdAt' | 'updatedAt' | 'userId' | 'deletedAt'>>) => {
+  const updateNote = async (noteId: string, noteData: Partial<Omit<Note, 'id' | 'summary' | 'createdAt' | 'updatedAt' | 'userId' | 'deletedAt'>> & { reminderAt?: string | null }) => {
     setIsProcessing(true);
     try {
       const db = await getDb();
@@ -139,13 +140,26 @@ export function NotesProvider({ children }: { children: ReactNode }) {
         updatedAt: serverTimestamp(),
       };
       
-      if (noteData.content) {
-        const { summary } = await summarizeNoteForSearch({ note: noteData.content });
-        updatePayload.summary = summary;
-      }
+      // Handle reminder separately as it needs conversion
       if (noteData.reminderAt) {
         updatePayload.reminderAt = Timestamp.fromDate(new Date(noteData.reminderAt));
+      } else if (noteData.reminderAt === null) {
+        updatePayload.reminderAt = null;
       }
+
+      if (noteData.content) {
+        // Run summarization in the background
+        summarizeNoteForSearch({ note: noteData.content })
+        .then(summaryResult => {
+          updateDoc(noteRef, { summary: summaryResult.summary });
+        })
+        .catch(aiError => {
+           console.error('Background AI summarization failed during update:', aiError);
+        });
+        // We don't include summary in the initial payload to avoid waiting
+        delete updatePayload.summary;
+      }
+
 
       await updateDoc(noteRef, updatePayload);
       toast({ title: 'Success', description: 'Note updated successfully.' });
