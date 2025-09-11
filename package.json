@@ -32,7 +32,7 @@
     "@radix-ui/react-select": "^2.1.6",
     "@radix-ui/react-separator": "^1.1.2",
     "react-hook-form": "7.52.1",
-    "zod": "3.23.8",
+    "zod": "3.24.1",
     "@radix-ui/react-slider": "^1.2.3",
     "@radix-ui/react-slot": "^1.2.3",
     "@radix-ui/react-switch": "^1.1.3",
