@@ -46,27 +46,18 @@ const setUserRoleFlow = ai.defineFlow(
     await initFirebaseAdmin();
     const auth = getAuth();
     
-    const currentClaims = (await auth.getUser(input.uid)).customUserClaims || {};
+    const user = await auth.getUser(input.uid);
+    const currentClaims = user.customUserClaims || {};
 
-    // Only update roles, preserve other claims like superadmin
-    const newClaims = {
+    // A superadmin's role cannot be changed via this flow.
+    if (currentClaims.superadmin === true) {
+        return;
+    }
+
+    // Set the new role, preserving any other existing claims.
+    await auth.setCustomUserClaims(input.uid, {
         ...currentClaims,
         role: input.role,
-    };
-    
-    // A superadmin cannot have their 'superadmin' status removed this way.
-    if (currentClaims.superadmin && input.role !== 'superadmin') {
-      newClaims.role = 'superadmin';
-    }
-
-    // Ensure we don't accidentally remove superadmin status if it's not explicitly passed
-    if (currentClaims.superadmin) {
-        newClaims.superadmin = true;
-    } else {
-        // Prevent non-superadmins from being promoted to superadmin via this flow
-        delete newClaims.superadmin;
-    }
-    
-    await auth.setCustomUserClaims(input.uid, newClaims);
+    });
   }
 );
