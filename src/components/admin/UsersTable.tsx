@@ -22,6 +22,15 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { useState } from "react";
 import { setUserRole } from "@/ai/flows/set-user-role";
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuLabel,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+  } from "@/components/ui/dropdown-menu"
+import { MoreHorizontal, Edit, KeyRound, Trash2 } from "lucide-react";
   
 
 interface UsersTableProps {
@@ -29,9 +38,20 @@ interface UsersTableProps {
   loading: boolean;
   onViewNotes: (user: UserWithNoteCount) => void;
   onUserRoleChanged: () => void;
+  onEditUser: (user: UserWithNoteCount) => void;
+  onChangePassword: (user: UserWithNoteCount) => void;
+  onDeleteUser: (user: UserWithNoteCount) => void;
 }
 
-export function UsersTable({ users, loading, onViewNotes, onUserRoleChanged }: UsersTableProps) {
+export function UsersTable({ 
+    users, 
+    loading, 
+    onViewNotes, 
+    onUserRoleChanged,
+    onEditUser,
+    onChangePassword,
+    onDeleteUser
+}: UsersTableProps) {
   const { user: currentUser } = useAuth();
   const { toast } = useToast();
   const [isUpdating, setIsUpdating] = useState<string | null>(null);
@@ -113,9 +133,35 @@ export function UsersTable({ users, loading, onViewNotes, onUserRoleChanged }: U
                   </TableCell>
                   <TableCell>{user.noteCount}</TableCell>
                   <TableCell className="text-right">
-                    <Button variant="outline" size="sm" onClick={() => onViewNotes(user)}>
-                      View Notes
+                    <Button variant="outline" size="sm" onClick={() => onViewNotes(user)} className="mr-2">
+                        View Notes
                     </Button>
+                    {currentUser?.role === 'superadmin' && user.role !== 'superadmin' && (
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" className="h-8 w-8 p-0">
+                                <span className="sr-only">Open menu</span>
+                                <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                                <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                <DropdownMenuItem onSelect={() => onEditUser(user)}>
+                                    <Edit className="mr-2 h-4 w-4" />
+                                    Edit User
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onSelect={() => onChangePassword(user)}>
+                                    <KeyRound className="mr-2 h-4 w-4" />
+                                    Change Password
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem onSelect={() => onDeleteUser(user)} className="text-destructive focus:text-destructive">
+                                    <Trash2 className="mr-2 h-4 w-4" />
+                                    Delete User
+                                </DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                    )}
                   </TableCell>
                 </TableRow>
               ))

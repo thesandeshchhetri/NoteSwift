@@ -13,7 +13,19 @@ import { getUsersAndStats } from '@/ai/flows/get-users-and-stats';
 import { collection, getDocs, query, where } from 'firebase/firestore';
 import { getDb } from '@/lib/firebase';
 import { Skeleton } from '@/components/ui/skeleton';
-
+import { EditUserModal } from '@/components/admin/EditUserModal';
+import { ChangePasswordModal } from '@/components/admin/ChangePasswordModal';
+import { deleteUser } from '@/ai/flows/delete-user';
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+  } from "@/components/ui/alert-dialog"
 
 export interface UserWithNoteCount extends User {
     noteCount: number;
@@ -30,6 +42,11 @@ export default function AdminDashboardPage() {
   const [selectedUser, setSelectedUser] = useState<UserWithNoteCount | null>(null);
   const [isNotesModalOpen, setIsNotesModalOpen] = useState(false);
   const [isCreateUserModalOpen, setIsCreateUserModalOpen] = useState(false);
+  const [isEditUserModalOpen, setIsEditUserModalOpen] = useState(false);
+  const [isChangePasswordModalOpen, setIsChangePasswordModalOpen] = useState(false);
+  const [isDeleteUserDialogOpen, setIsDeleteUserDialogOpen] = useState(false);
+  const [userToTakeActionOn, setUserToTakeActionOn] = useState<UserWithNoteCount | null>(null);
+
   const [userNotes, setUserNotes] = useState<Note[]>([]);
   const [loadingNotes, setLoadingNotes] = useState(false);
 
@@ -103,7 +120,36 @@ export default function AdminDashboardPage() {
   const handleUserCreated = () => {
     fetchAdminData();
   }
+
+  const handleEditUser = (user: UserWithNoteCount) => {
+    setUserToTakeActionOn(user);
+    setIsEditUserModalOpen(true);
+  };
   
+  const handleChangePassword = (user: UserWithNoteCount) => {
+    setUserToTakeActionOn(user);
+    setIsChangePasswordModalOpen(true);
+  };
+  
+  const handleDeleteUser = (user: UserWithNoteCount) => {
+    setUserToTakeActionOn(user);
+    setIsDeleteUserDialogOpen(true);
+  };
+  
+  const confirmDeleteUser = async () => {
+    if (!userToTakeActionOn) return;
+    try {
+      await deleteUser({ uid: userToTakeActionOn.id });
+      toast({ title: 'Success', description: 'User deleted successfully.' });
+      fetchAdminData();
+    } catch (error: any) {
+      console.error('Failed to delete user:', error);
+      toast({ variant: 'destructive', title: 'Error', description: error.message || 'Failed to delete user.' });
+    } finally {
+      setIsDeleteUserDialogOpen(false);
+      setUserToTakeActionOn(null);
+    }
+  };
 
   return (
     <>
@@ -137,7 +183,15 @@ export default function AdminDashboardPage() {
                 </CardContent>
                 </Card>
             </div>
-            <UsersTable users={users} loading={loading} onViewNotes={handleViewNotes} onUserRoleChanged={fetchAdminData} />
+            <UsersTable 
+              users={users} 
+              loading={loading} 
+              onViewNotes={handleViewNotes} 
+              onUserRoleChanged={fetchAdminData}
+              onEditUser={handleEditUser}
+              onChangePassword={handleChangePassword}
+              onDeleteUser={handleDeleteUser}
+            />
         </div>
         
         <UserNotesModal 
@@ -157,6 +211,40 @@ export default function AdminDashboardPage() {
             onOpenChange={setIsCreateUserModalOpen}
             onUserCreated={handleUserCreated}
         />
+
+        <EditUserModal
+            isOpen={isEditUserModalOpen}
+            onOpenChange={setIsEditUserModalOpen}
+            user={userToTakeActionOn}
+            onUserUpdated={() => {
+                fetchAdminData();
+                setIsEditUserModalOpen(false);
+            }}
+        />
+
+        <ChangePasswordModal
+            isOpen={isChangePasswordModalOpen}
+            onOpenChange={setIsChangePasswordModalOpen}
+            user={userToTakeActionOn}
+            onPasswordChanged={() => {
+                setIsChangePasswordModalOpen(false);
+            }}
+        />
+
+        <AlertDialog open={isDeleteUserDialogOpen} onOpenChange={setIsDeleteUserDialogOpen}>
+            <AlertDialogContent>
+                <AlertDialogHeader>
+                    <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                        This action will permanently delete the user "{userToTakeActionOn?.username}" and all of their associated data (including all notes). This action cannot be undone.
+                    </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                    <AlertDialogCancel onClick={() => setUserToTakeActionOn(null)}>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={confirmDeleteUser} className="bg-destructive hover:bg-destructive/90">Delete User</AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
     </>
   );
 }

@@ -46,3 +46,23 @@ export const SummarizeNoteForSearchOutputSchema = z.object({
     summary: z.string().describe('A short summary of the note.'),
 });
 export type SummarizeNoteForSearchOutput = z.infer<typeof SummarizeNoteForSearchOutputSchema>;
+
+// Schema for updating a user's details
+export const UpdateUserInputSchema = z.object({
+    uid: z.string().describe('The UID of the user to update.'),
+    username: z.string().min(3, 'Username must be at least 3 characters').describe("The user's new username."),
+});
+export type UpdateUserInput = z.infer<typeof UpdateUserInputSchema>;
+
+// Schema for deleting a user
+export const DeleteUserInputSchema = z.object({
+    uid: z.string().describe('The UID of the user to delete.'),
+});
+export type DeleteUserInput = z.infer<typeof DeleteUserInputSchema>;
+
+// Schema for updating a user's password
+export const UpdateUserPasswordInputSchema = z.object({
+    uid: z.string().describe('The UID of the user to update.'),
+    newPassword: z.string().min(8, 'Password must be at least 8 characters').describe("The user's new password."),
+});
+export type UpdateUserPasswordInput = z.infer<typeof UpdateUserPasswordInputSchema>;

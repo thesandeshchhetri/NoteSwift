@@ -8,7 +8,7 @@
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
 import { getAuth } from 'firebase-admin/auth';
-import { doc, setDoc } from 'firebase/firestore';
+import { doc, setDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { getDb } from '@/lib/firebase';
 import { headers } from 'next/headers';
 import { initFirebaseAdmin } from '@/lib/firebase-admin';
@@ -50,6 +50,14 @@ const createUserFlow = ai.defineFlow(
     }
 
     const db = await getDb();
+
+    // Check for unique username
+    const usersRef = collection(db, 'users');
+    const q = query(usersRef, where('username', '==', input.username));
+    const querySnapshot = await getDocs(q);
+    if (!querySnapshot.empty) {
+        throw new Error('Username is already taken.');
+    }
 
     // Create user in Firebase Auth
     const userRecord = await auth.createUser({
