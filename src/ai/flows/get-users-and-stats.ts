@@ -8,7 +8,7 @@
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
 import { initFirebaseAdmin } from '@/lib/firebase-admin';
-import { getFirestore } from 'firebase-admin/firestore';
+import { getFirestore, QuerySnapshot } from 'firebase-admin/firestore';
 import { getAuth } from 'firebase-admin/auth';
 import type { User } from '@/types';
 import { NextRequest } from 'next/server';
@@ -47,8 +47,17 @@ const getUsersAndStatsFlow = ai.defineFlow(
     const db = getFirestore();
     const auth = getAuth();
 
-    // Get all notes
-    const notesSnapshot = await db.collection('notes').get();
+    let notesSnapshot: QuerySnapshot;
+    try {
+        notesSnapshot = await db.collection('notes').get();
+    } catch (error: any) {
+        if (error.code === 5) { // NOT_FOUND
+            notesSnapshot = { empty: true, size: 0, docs: [], forEach: () => {} } as unknown as QuerySnapshot;
+        } else {
+            throw error;
+        }
+    }
+    
     const noteCount = notesSnapshot.size;
 
     // Get all users from Auth
