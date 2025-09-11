@@ -4,22 +4,11 @@
  * @fileOverview A flow to summarize a note for search purposes.
  *
  * - summarizeNoteForSearch - A function that takes a note and returns a short summary.
- * - SummarizeNoteForSearchInput - The input type for the summarizeNoteForSearch function.
- * - SummarizeNoteForSearchOutput - The return type for the summarizeNoteForSearch function.
  */
 
 import {ai} from '@/ai/genkit';
-import {z} from 'genkit';
+import { SummarizeNoteForSearchInputSchema, SummarizeNoteForSearchOutputSchema, type SummarizeNoteForSearchInput, type SummarizeNoteForSearchOutput } from '@/types/schemas';
 
-const SummarizeNoteForSearchInputSchema = z.object({
-  note: z.string().describe('The content of the note to summarize.'),
-});
-export type SummarizeNoteForSearchInput = z.infer<typeof SummarizeNoteForSearchInputSchema>;
-
-const SummarizeNoteForSearchOutputSchema = z.object({
-  summary: z.string().describe('A short summary of the note.'),
-});
-export type SummarizeNoteForSearchOutput = z.infer<typeof SummarizeNoteForSearchOutputSchema>;
 
 export async function summarizeNoteForSearch(input: SummarizeNoteForSearchInput): Promise<SummarizeNoteForSearchOutput> {
   return summarizeNoteForSearchFlow(input);

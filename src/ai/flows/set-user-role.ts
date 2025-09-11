@@ -3,7 +3,6 @@
  * @fileOverview A flow to manage user roles.
  *
  * - setUserRole - A function that sets a user's role via custom claims.
- * - SetUserRoleInput - The input type for the setUserRole function.
  */
 
 import { ai } from '@/ai/genkit';
@@ -11,12 +10,7 @@ import { z } from 'genkit';
 import { getAuth } from 'firebase-admin/auth';
 import {NextRequest} from 'next/server';
 import { initFirebaseAdmin } from '@/lib/firebase-admin';
-
-export const SetUserRoleInputSchema = z.object({
-  uid: z.string().describe('The UID of the user to update.'),
-  role: z.enum(['admin', 'user']).describe("The role to assign to the user."),
-});
-export type SetUserRoleInput = z.infer<typeof SetUserRoleInputSchema>;
+import { SetUserRoleInputSchema, type SetUserRoleInput } from '@/types/schemas';
 
 export async function setUserRole(input: SetUserRoleInput): Promise<void> {
     return setUserRoleFlow(input);

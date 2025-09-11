@@ -3,7 +3,6 @@
  * @fileOverview A flow to get user and note statistics for the admin dashboard.
  * 
  * - getUsersAndStats - Fetches all users, their note counts, and the total note count.
- * - AdminDashboardData - The return type for the getUsersAndStats function.
  */
 
 import { ai } from '@/ai/genkit';
@@ -13,21 +12,8 @@ import { getFirestore } from 'firebase-admin/firestore';
 import { getAuth } from 'firebase-admin/auth';
 import type { User } from '@/types';
 import { NextRequest } from 'next/server';
+import { AdminDashboardDataSchema, type AdminDashboardData } from '@/types/schemas';
 
-const UserWithNoteCountSchema = z.object({
-    id: z.string(),
-    username: z.string(),
-    email: z.string(),
-    role: z.enum(['admin', 'user', 'superadmin']),
-    noteCount: z.number(),
-});
-
-const AdminDashboardDataSchema = z.object({
-  users: z.array(UserWithNoteCountSchema),
-  userCount: z.number(),
-  noteCount: z.number(),
-});
-export type AdminDashboardData = z.infer<typeof AdminDashboardDataSchema>;
 
 export async function getUsersAndStats(): Promise<AdminDashboardData> {
   return getUsersAndStatsFlow();

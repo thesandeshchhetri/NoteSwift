@@ -3,7 +3,6 @@
  * @fileOverview A flow to create a new user.
  *
  * - createUser - A function that handles creating a new user with a specified role.
- * - CreateUserInput - The input type for the createUser function.
  */
 
 import { ai } from '@/ai/genkit';
@@ -13,14 +12,7 @@ import { doc, setDoc } from 'firebase/firestore';
 import { getDb } from '@/lib/firebase';
 import { NextRequest } from 'next/server';
 import { initFirebaseAdmin } from '@/lib/firebase-admin';
-
-export const CreateUserInputSchema = z.object({
-  username: z.string().min(3, 'Username must be at least 3 characters'),
-  email: z.string().email('Invalid email address'),
-  password: z.string().min(8, 'Password must be at least 8 characters'),
-  role: z.enum(['admin', 'user']).describe("The role to assign to the new user."),
-});
-export type CreateUserInput = z.infer<typeof CreateUserInputSchema>;
+import { CreateUserInputSchema, type CreateUserInput } from '@/types/schemas';
 
 export async function createUser(input: CreateUserInput): Promise<{ uid: string }> {
   return createUserFlow(input);
