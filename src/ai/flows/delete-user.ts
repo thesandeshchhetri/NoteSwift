@@ -8,7 +8,7 @@
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
 import { getAuth } from 'firebase-admin/auth';
-import { doc, collection, query, where, getDocs, writeBatch } from 'firebase/firestore';
+import { doc, collection, query, where, getDocs, writeBatch, deleteDoc } from 'firebase/firestore';
 import { getDb } from '@/lib/firebase';
 import { headers } from 'next/headers';
 import { initFirebaseAdmin } from '@/lib/firebase-admin';
@@ -66,7 +66,7 @@ const deleteUserFlow = ai.defineFlow(
     
     // 2. Delete the user document from Firestore
     const userDocRef = doc(db, 'users', uid);
-    await userDocRef.delete();
+    await deleteDoc(userDocRef);
 
     // 3. Delete the user from Firebase Auth
     await auth.deleteUser(uid);
