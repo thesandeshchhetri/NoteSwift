@@ -50,13 +50,21 @@ const getUsersAndStatsFlow = ai.defineFlow(
 
     let allNotesSnapshot: QuerySnapshot;
     try {
-        allNotesSnapshot = await db.collection('notes').get();
+        // Querying for all non-deleted notes. This might require a composite index in Firestore.
+        allNotesSnapshot = await db.collection('notes').where('deletedAt', '==', null).get();
     } catch (error: any) {
-        if (error.code === 5) { // NOT_FOUND
-            allNotesSnapshot = { empty: true, size: 0, docs: [], forEach: () => {} } as unknown as QuerySnapshot;
-        } else {
-            console.error("Error fetching notes for stats:", error);
-            throw error; // Re-throw other errors
+        // If the specific query fails (e.g., due to a missing index), fall back to fetching all notes
+        // and filtering in memory. This is less efficient but more resilient.
+        console.warn('Query for active notes failed, falling back to fetching all notes. Consider creating a composite index on (userId, deletedAt). Error:', error.message);
+        try {
+            allNotesSnapshot = await db.collection('notes').get();
+        } catch (innerError: any) {
+            if (innerError.code === 5) { // NOT_FOUND for the 'notes' collection itself
+                allNotesSnapshot = { empty: true, size: 0, docs: [], forEach: () => {} } as unknown as QuerySnapshot;
+            } else {
+                console.error("Error fetching any notes:", innerError);
+                throw innerError; // Re-throw other errors
+            }
         }
     }
 
