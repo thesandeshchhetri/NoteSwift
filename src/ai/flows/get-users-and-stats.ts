@@ -52,11 +52,12 @@ const getUsersAndStatsFlow = ai.defineFlow(
         // Only fetch notes that are not soft-deleted
         notesSnapshot = await db.collection('notes').where('deletedAt', '==', null).get();
     } catch (error: any) {
-        // This can happen if the 'notes' collection does not exist at all.
+        // This can happen if the 'notes' collection does not exist at all or if the index is not ready.
         if (error.code === 5 || (error.details && error.details.includes("no matching index found"))) {
             notesSnapshot = { empty: true, size: 0, docs: [], forEach: () => {} } as unknown as QuerySnapshot;
         } else {
-            throw error;
+            console.error("Error fetching notes for stats:", error);
+            throw error; // Re-throw other errors
         }
     }
     
