@@ -1,3 +1,4 @@
+
 import { initializeApp, getApp, getApps } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { getFirestore, enableIndexedDbPersistence, Firestore } from 'firebase/firestore';
@@ -16,27 +17,36 @@ export const firebaseConfig = {
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 const auth = getAuth(app);
 
-let db: Firestore | null = null;
+let db: Firestore;
 let persistenceEnabled = false;
 
-export const getDb = async (): Promise<Firestore> => {
-    if (db) return db;
-
-    db = getFirestore(app);
-
-    if (typeof window !== 'undefined' && !persistenceEnabled) {
-        persistenceEnabled = true;
+// This promise will be resolved once persistence is enabled.
+const persistencePromise = (async () => {
+    if (typeof window !== 'undefined') {
+        const firestore = getFirestore(app);
         try {
-            await enableIndexedDbPersistence(db);
+            await enableIndexedDbPersistence(firestore);
+            persistenceEnabled = true;
         } catch (err: any) {
             if (err.code === 'failed-precondition') {
-                console.warn("Firestore persistence failed: Multiple tabs open.");
+                // This can happen if multiple tabs are open.
+                // Persistence will still work in one tab.
+                console.warn('Firestore persistence failed to enable in this tab. It might be enabled in another tab.');
             } else if (err.code === 'unimplemented') {
-                console.warn("Firestore persistence failed: Browser does not support all features.");
+                console.warn('Firestore persistence is not supported in this browser.');
             } else {
-                console.error("Firestore persistence error:", err);
+                console.error('An error occurred while enabling Firestore persistence:', err);
             }
         }
+        return firestore;
+    }
+    // On the server, just return a regular Firestore instance.
+    return getFirestore(app);
+})();
+
+export const getDb = async (): Promise<Firestore> => {
+    if (!db) {
+        db = await persistencePromise;
     }
     return db;
 };
