@@ -66,7 +66,16 @@ const getUsersAndStatsFlow = ai.defineFlow(
     const userCount = authUsers.length;
     
     // Get all user docs from Firestore
-    const usersSnapshot = await db.collection('users').get();
+    let usersSnapshot: QuerySnapshot;
+    try {
+        usersSnapshot = await db.collection('users').get();
+    } catch (error: any) {
+        if (error.code === 5) { // NOT_FOUND
+            usersSnapshot = { empty: true, docs: [] } as unknown as QuerySnapshot;
+        } else {
+            throw error;
+        }
+    }
     const firestoreUsers = new Map(usersSnapshot.docs.map(doc => [doc.id, doc.data() as Omit<User, 'id'>]));
 
     // Get note counts for each user
