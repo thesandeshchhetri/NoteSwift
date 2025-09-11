@@ -53,7 +53,7 @@ export function CreateUserModal({ isOpen, onOpenChange, onUserCreated }: CreateU
       toast({
         variant: 'destructive',
         title: 'Error creating user',
-        description: error.message || 'An unexpected error occurred.',
+        description: error.message || 'An unexpected response was received from the server.',
       });
     } finally {
       setIsSubmitting(false);
