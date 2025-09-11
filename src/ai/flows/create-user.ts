@@ -10,9 +10,9 @@ import { z } from 'genkit';
 import { getAuth } from 'firebase-admin/auth';
 import { doc, setDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { getDb } from '@/lib/firebase';
-import { headers } from 'next/headers';
 import { initFirebaseAdmin } from '@/lib/firebase-admin';
 import { CreateUserInputSchema, type CreateUserInput } from '@/types/schemas';
+import { NextRequest } from 'next/server';
 
 export async function createUser(input: CreateUserInput): Promise<{ uid: string }> {
   return createUserFlow(input);
@@ -23,32 +23,29 @@ const createUserFlow = ai.defineFlow(
     name: 'createUserFlow',
     inputSchema: CreateUserInputSchema,
     outputSchema: z.object({ uid: z.string() }),
-  },
-  async input => {
-    // Authorization check moved inside the flow
-    const headersList = headers();
-    const idToken = headersList.get('Authorization')?.split('Bearer ')[1];
-    
-    if (!idToken) {
-        throw new Error('Unauthorized: No token provided.');
-    }
+    auth: async (auth, input) => {
+        const req = auth as NextRequest;
+        const idToken = req.headers.get('Authorization')?.split('Bearer ')[1];
+        
+        if (!idToken) {
+            throw new Error('Unauthorized: No token provided.');
+        }
 
-    await initFirebaseAdmin();
-    const auth = getAuth();
-    
-    try {
-        const decodedToken = await auth.verifyIdToken(idToken);
+        await initFirebaseAdmin();
+        const authClient = getAuth();
+        
+        const decodedToken = await authClient.verifyIdToken(idToken);
         const isSuperAdmin = decodedToken.superadmin === true;
         const isAdmin = decodedToken.role === 'admin';
 
         if (!isSuperAdmin && !isAdmin) {
             throw new Error('Forbidden: Only admins or superadmins can create users.');
         }
-    } catch (error) {
-        console.error("Auth verification failed:", error);
-        throw new Error('Unauthorized: Invalid token.');
-    }
-
+    },
+  },
+  async input => {
+    await initFirebaseAdmin();
+    const auth = getAuth();
     const db = await getDb();
 
     // Check for unique username
