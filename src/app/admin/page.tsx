@@ -26,9 +26,15 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
   } from "@/components/ui/alert-dialog"
+import { NotesByDayChart } from '@/components/admin/charts/NotesByDayChart';
+import { NotesByHourChart } from '@/components/admin/charts/NotesByHourChart';
 
 export interface UserWithNoteCount extends User {
     noteCount: number;
+}
+interface ChartData {
+    notesByHour: { hour: string; count: number }[];
+    notesByDay: { date: string; count: number }[];
 }
 
 export default function AdminDashboardPage() {
@@ -36,6 +42,7 @@ export default function AdminDashboardPage() {
   const [userCount, setUserCount] = useState(0);
   const [noteCount, setNoteCount] = useState(0);
   const [users, setUsers] = useState<UserWithNoteCount[]>([]);
+  const [chartData, setChartData] = useState<ChartData>({ notesByHour: [], notesByDay: [] });
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
@@ -98,6 +105,7 @@ export default function AdminDashboardPage() {
       setUsers(data.users as UserWithNoteCount[]);
       setUserCount(data.userCount);
       setNoteCount(data.noteCount);
+      setChartData({ notesByHour: data.notesByHour, notesByDay: data.notesByDay });
     } catch (error: any) {
       console.error('Failed to fetch admin data:', error);
       toast({
@@ -182,6 +190,10 @@ export default function AdminDashboardPage() {
                 {loading ? <Skeleton className="h-8 w-20" /> : <div className="text-2xl font-bold">{noteCount}</div>}
                 </CardContent>
                 </Card>
+            </div>
+            <div className="grid gap-4 md:grid-cols-2">
+                <NotesByHourChart data={chartData.notesByHour} loading={loading} />
+                <NotesByDayChart data={chartData.notesByDay} loading={loading} />
             </div>
             <UsersTable 
               users={users} 

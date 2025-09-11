@@ -8,11 +8,12 @@
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
 import { initFirebaseAdmin } from '@/lib/firebase-admin';
-import { getFirestore, QuerySnapshot } from 'firebase-admin/firestore';
+import { getFirestore, QuerySnapshot, Timestamp } from 'firebase-admin/firestore';
 import { getAuth } from 'firebase-admin/auth';
 import type { User } from '@/types';
 import { NextRequest } from 'next/server';
 import { AdminDashboardDataSchema, type AdminDashboardData } from '@/types/schemas';
+import { format } from 'date-fns';
 
 
 export async function getUsersAndStats(): Promise<AdminDashboardData> {
@@ -63,6 +64,30 @@ const getUsersAndStatsFlow = ai.defineFlow(
     
     const noteCount = notesSnapshot.size;
 
+    // Chart Data Processing
+    const notesByHour = Array(24).fill(0).map((_, i) => ({ hour: `${i.toString().padStart(2, '0')}:00`, count: 0 }));
+    const notesByDay: { [key: string]: number } = {};
+    
+    notesSnapshot.forEach(doc => {
+      const data = doc.data();
+      if (data.createdAt && data.createdAt instanceof Timestamp) {
+        const createdAt = data.createdAt.toDate();
+        
+        // Aggregate by hour
+        const hour = createdAt.getHours();
+        notesByHour[hour].count++;
+
+        // Aggregate by day (for last 30 days)
+        const dateKey = format(createdAt, 'yyyy-MM-dd');
+        notesByDay[dateKey] = (notesByDay[dateKey] || 0) + 1;
+      }
+    });
+
+    const notesByDayArray = Object.entries(notesByDay)
+      .map(([date, count]) => ({ date, count }))
+      .sort((a, b) => a.date.localeCompare(b.date));
+
+
     // Get all users from Auth
     const listUsersResult = await auth.listUsers();
     const authUsers = listUsersResult.users;
@@ -102,6 +127,6 @@ const getUsersAndStatsFlow = ai.defineFlow(
         };
     });
 
-    return { users, userCount, noteCount };
+    return { users, userCount, noteCount, notesByHour, notesByDay: notesByDayArray };
   }
 );

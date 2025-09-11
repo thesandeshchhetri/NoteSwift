@@ -26,6 +26,8 @@ export const AdminDashboardDataSchema = z.object({
     users: z.array(UserWithNoteCountSchema),
     userCount: z.number(),
     noteCount: z.number(),
+    notesByHour: z.array(z.object({ hour: z.string(), count: z.number() })),
+    notesByDay: z.array(z.object({ date: z.string(), count: z.number() })),
 });
 export type AdminDashboardData = z.infer<typeof AdminDashboardDataSchema>;
 
