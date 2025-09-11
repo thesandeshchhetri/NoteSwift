@@ -32,8 +32,8 @@ export function AdminSidebar() {
                 </Link>
             </SidebarMenuItem>
             <SidebarMenuItem>
-                <Link href="/admin" passHref>
-                    <SidebarMenuButton isActive={pathname.startsWith('/admin')}>
+                <Link href="/admin/users" passHref>
+                    <SidebarMenuButton isActive={pathname.startsWith('/admin/users')}>
                         <Users />
                         Users
                     </SidebarMenuButton>

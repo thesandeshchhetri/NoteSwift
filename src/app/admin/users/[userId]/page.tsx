@@ -103,7 +103,7 @@ export default function UserNotesPage({ params }: { params: { userId: string } }
                         {user ? `Viewing all active notes for ${user.email}` : 'Loading user details...'}
                     </p>
                 </div>
-                <Link href="/admin" className={cn(buttonVariants({variant: 'outline'}))}>
+                <Link href="/admin/users" className={cn(buttonVariants({variant: 'outline'}))}>
                     <ArrowLeft className="mr-2 h-4 w-4" />
                     Back to All Users
                 </Link>

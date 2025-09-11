@@ -6,7 +6,7 @@ import { useEffect, type ReactNode } from 'react';
 import { Logo } from './Logo';
 
 const PUBLIC_ROUTES = ['/login', '/signup', '/forgot-password'];
-const ADMIN_ROUTES = ['/admin', '/admin/users'];
+const ADMIN_ROUTES = ['/admin'];
 
 export function AuthGuard({ children }: { children: ReactNode }) {
   const { user, loading } = useAuth();
