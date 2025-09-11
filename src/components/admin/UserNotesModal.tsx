@@ -38,6 +38,7 @@ import { ScrollArea } from "../ui/scroll-area";
 import { Trash2 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import type { UserWithNoteCount } from '@/app/admin/page';
+import { UserNotesTable } from './UserNotesTable';
 
 interface UserNotesModalProps {
     isOpen: boolean;
@@ -52,10 +53,7 @@ export function UserNotesModal({ isOpen, onOpenChange, user, notes, loading, onN
     const [noteToDelete, setNoteToDelete] = useState<Note | null>(null);
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
     const { toast } = useToast();
-    const { user: currentUser } = useAuth();
     
-    const sortedNotes = [...notes].sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
-
     const handleDeleteRequest = (note: Note) => {
         setNoteToDelete(note);
         setIsDeleteDialogOpen(true);
@@ -92,52 +90,7 @@ export function UserNotesModal({ isOpen, onOpenChange, user, notes, loading, onN
                     </DialogHeader>
                     <div className="flex-1 overflow-hidden">
                         <ScrollArea className="h-full">
-                        <div className="rounded-md border">
-                            <Table>
-                                <TableHeader>
-                                <TableRow>
-                                    <TableHead>Title</TableHead>
-                                    <TableHead>Last Updated</TableHead>
-                                    <TableHead>Tags</TableHead>
-                                    <TableHead className="text-right">Actions</TableHead>
-                                </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                {loading ? (
-                                    Array.from({ length: 5 }).map((_, i) => (
-                                        <TableRow key={i}>
-                                            <TableCell><Skeleton className="h-5 w-40" /></TableCell>
-                                            <TableCell><Skeleton className="h-5 w-32" /></TableCell>
-                                            <TableCell><Skeleton className="h-5 w-24" /></TableCell>
-                                            <TableCell className="text-right"><Skeleton className="h-8 w-36 ml-auto" /></TableCell>
-                                        </TableRow>
-                                    ))
-                                ) : sortedNotes.length > 0 ? (
-                                    sortedNotes.map((note) => (
-                                    <TableRow key={note.id}>
-                                        <TableCell className="font-medium">{note.title}</TableCell>
-                                        <TableCell>{format(parseISO(note.updatedAt), 'PPP')}</TableCell>
-                                        <TableCell>{note.tags.join(', ')}</TableCell>
-                                        <TableCell className="text-right space-x-2">
-                                            {(currentUser?.role === 'superadmin' || currentUser?.role === 'admin') && (
-                                                <Button variant="destructive" size="sm" onClick={() => handleDeleteRequest(note)}>
-                                                    <Trash2 className="mr-2 h-4 w-4" />
-                                                    Delete
-                                                </Button>
-                                            )}
-                                        </TableCell>
-                                    </TableRow>
-                                    ))
-                                ) : (
-                                    <TableRow>
-                                    <TableCell colSpan={4} className="h-24 text-center">
-                                        This user has no active notes.
-                                    </TableCell>
-                                    </TableRow>
-                                )}
-                                </TableBody>
-                            </Table>
-                            </div>
+                            <UserNotesTable notes={notes} loading={loading} onDeleteNote={handleDeleteRequest} />
                         </ScrollArea>
                     </div>
                 </DialogContent>

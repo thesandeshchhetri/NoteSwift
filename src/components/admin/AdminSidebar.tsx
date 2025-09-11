@@ -33,7 +33,7 @@ export function AdminSidebar() {
             </SidebarMenuItem>
             <SidebarMenuItem>
                 <Link href="/admin" passHref>
-                    <SidebarMenuButton isActive={pathname.startsWith('/admin/users')}>
+                    <SidebarMenuButton isActive={pathname.startsWith('/admin')}>
                         <Users />
                         Users
                     </SidebarMenuButton>
