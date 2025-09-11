@@ -12,15 +12,18 @@ import { useToast } from '@/hooks/use-toast';
 import { createUser, CreateUserInputSchema } from '@/ai/flows/create-user';
 import { useState } from 'react';
 import { Loader2 } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface CreateUserModalProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
+  onUserCreated: () => void;
 }
 
-export function CreateUserModal({ isOpen, onOpenChange }: CreateUserModalProps) {
+export function CreateUserModal({ isOpen, onOpenChange, onUserCreated }: CreateUserModalProps) {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const { user } = useAuth();
 
   const form = useForm<z.infer<typeof CreateUserInputSchema>>({
     resolver: zodResolver(CreateUserInputSchema),
@@ -42,6 +45,7 @@ export function CreateUserModal({ isOpen, onOpenChange }: CreateUserModalProps) 
     try {
       await createUser(values);
       toast({ title: 'Success', description: 'User created successfully.' });
+      onUserCreated();
       handleClose();
     } catch (error: any) {
       console.error(error);
@@ -111,7 +115,7 @@ export function CreateUserModal({ isOpen, onOpenChange }: CreateUserModalProps) 
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Role</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <Select onValueChange={field.onChange} defaultValue={field.value} disabled={user?.role !== 'superadmin'}>
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Select a role" />

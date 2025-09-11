@@ -1,8 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
 import type { Note, User } from '@/types';
-import { collection, getDocs, query, onSnapshot, where } from 'firebase/firestore';
-import { getDb } from '@/lib/firebase';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Users, FileText, Plus } from 'lucide-react';
 import { UsersTable } from '@/components/admin/UsersTable';
@@ -11,6 +9,11 @@ import { useAuth } from '@/contexts/AuthContext';
 import { UserNotesModal } from '@/components/admin/UserNotesModal';
 import { Button } from '@/components/ui/button';
 import { CreateUserModal } from '@/components/admin/CreateUserModal';
+import { getUsersAndStats } from '@/ai/flows/get-users-and-stats';
+import { collection, getDocs, query, where } from 'firebase/firestore';
+import { getDb } from '@/lib/firebase';
+import { Skeleton } from '@/components/ui/skeleton';
+
 
 export interface UserWithNoteCount extends User {
     noteCount: number;
@@ -71,65 +74,35 @@ export default function AdminDashboardPage() {
     }
   };
 
+  const fetchAdminData = async () => {
+    setLoading(true);
+    try {
+      const data = await getUsersAndStats();
+      setUsers(data.users as UserWithNoteCount[]);
+      setUserCount(data.userCount);
+      setNoteCount(data.noteCount);
+    } catch (error: any) {
+      console.error('Failed to fetch admin data:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: error.message || 'Failed to fetch admin dashboard data.',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    if (!currentUser || (currentUser.role !== 'admin' && currentUser.role !== 'superadmin')) {
-        setLoading(false);
-        return;
+    if (currentUser?.role === 'admin' || currentUser?.role === 'superadmin') {
+      fetchAdminData();
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentUser]);
 
-    const setupListeners = async () => {
-        try {
-            const db = await getDb();
-            
-            const notesUnsubscribe = onSnapshot(collection(db, 'notes'), 
-                (snapshot) => setNoteCount(snapshot.size),
-                (error) => {
-                    console.error("Error fetching notes count:", error);
-                    toast({ variant: 'destructive', title: 'Error', description: 'Failed to fetch total notes count. Check security rules.' });
-                }
-            );
-
-            const usersUnsubscribe = onSnapshot(query(collection(db, 'users')), async (usersSnapshot) => {
-                const usersList = usersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as User[];
-                setUserCount(usersList.length);
-
-                const usersWithNoteCounts = await Promise.all(
-                    usersList.map(async (user) => {
-                        const userNotesQuery = query(collection(db, 'notes'), where('userId', '==', user.id));
-                        const notesSnapshot = await getDocs(userNotesQuery);
-                        return { ...user, noteCount: notesSnapshot.size };
-                    })
-                );
-
-                setUsers(usersWithNoteCounts);
-                setLoading(false);
-            }, (error) => {
-                console.error("Error fetching users:", error);
-                toast({ variant: 'destructive', title: 'Error', description: 'Failed to fetch user data. Check security rules.' });
-                setLoading(false);
-            });
-
-            return () => {
-                notesUnsubscribe();
-                usersUnsubscribe();
-            };
-        } catch (err) {
-            console.error(err);
-            toast({ variant: 'destructive', title: 'Error', description: 'Failed to set up admin data listeners.' });
-            setLoading(false);
-        }
-    }
-    
-    const unsubscribePromise = setupListeners();
-
-    return () => {
-        unsubscribePromise.then(unsubscribe => {
-            if (unsubscribe) {
-                unsubscribe();
-            }
-        });
-    };
-  }, [currentUser, toast]);
+  const handleUserCreated = () => {
+    fetchAdminData();
+  }
   
 
   return (
@@ -137,7 +110,7 @@ export default function AdminDashboardPage() {
         <div className="flex-1 space-y-4 p-8 pt-6">
             <div className="flex items-center justify-between space-y-2">
                 <h2 className="text-3xl font-bold tracking-tight">Admin Dashboard</h2>
-                {currentUser?.role === 'superadmin' && (
+                {(currentUser?.role === 'superadmin' || currentUser?.role === 'admin') && (
                     <Button onClick={() => setIsCreateUserModalOpen(true)}>
                         <Plus className="mr-2 h-4 w-4" />
                         Create User
@@ -151,7 +124,7 @@ export default function AdminDashboardPage() {
                     <Users className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                    <div className="text-2xl font-bold">{loading ? '...' : userCount}</div>
+                    {loading ? <Skeleton className="h-8 w-20" /> : <div className="text-2xl font-bold">{userCount}</div>}
                 </CardContent>
                 </Card>
                 <Card>
@@ -160,11 +133,11 @@ export default function AdminDashboardPage() {
                     <FileText className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                    <div className="text-2xl font-bold">{loading ? '...' : noteCount}</div>
+                {loading ? <Skeleton className="h-8 w-20" /> : <div className="text-2xl font-bold">{noteCount}</div>}
                 </CardContent>
                 </Card>
             </div>
-            <UsersTable users={users} loading={loading} onViewNotes={handleViewNotes} />
+            <UsersTable users={users} loading={loading} onViewNotes={handleViewNotes} onUserRoleChanged={fetchAdminData} />
         </div>
         
         <UserNotesModal 
@@ -173,12 +146,16 @@ export default function AdminDashboardPage() {
             user={selectedUser}
             notes={userNotes}
             loading={loadingNotes}
-            onNoteDeleted={refreshUserNotes}
+            onNoteDeleted={() => {
+              refreshUserNotes();
+              fetchAdminData();
+            }}
         />
 
         <CreateUserModal
             isOpen={isCreateUserModalOpen}
             onOpenChange={setIsCreateUserModalOpen}
+            onUserCreated={handleUserCreated}
         />
     </>
   );

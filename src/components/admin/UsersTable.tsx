@@ -28,9 +28,10 @@ interface UsersTableProps {
   users: UserWithNoteCount[];
   loading: boolean;
   onViewNotes: (user: UserWithNoteCount) => void;
+  onUserRoleChanged: () => void;
 }
 
-export function UsersTable({ users, loading, onViewNotes }: UsersTableProps) {
+export function UsersTable({ users, loading, onViewNotes, onUserRoleChanged }: UsersTableProps) {
   const { user: currentUser } = useAuth();
   const { toast } = useToast();
   const [isUpdating, setIsUpdating] = useState<string | null>(null);
@@ -40,6 +41,7 @@ export function UsersTable({ users, loading, onViewNotes }: UsersTableProps) {
     try {
         await setUserRole({ uid, role: newRole });
         toast({ title: 'Success', description: 'User role updated.' });
+        onUserRoleChanged(); // Refresh the user list
     } catch (error: any) {
         console.error("Failed to set user role:", error);
         toast({ variant: 'destructive', title: 'Error', description: error.message || 'Failed to update user role.' });
@@ -53,7 +55,7 @@ export function UsersTable({ users, loading, onViewNotes }: UsersTableProps) {
     if (b.role === 'superadmin') return 1;
     if (a.role === 'admin' && b.role !== 'admin') return -1;
     if (b.role === 'admin' && a.role !== 'admin') return 1;
-    return (b.noteCount) - (a.noteCount);
+    return (a.username.localeCompare(b.username));
   });
 
   return (
