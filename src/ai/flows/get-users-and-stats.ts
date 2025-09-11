@@ -49,9 +49,11 @@ const getUsersAndStatsFlow = ai.defineFlow(
 
     let notesSnapshot: QuerySnapshot;
     try {
-        notesSnapshot = await db.collection('notes').get();
+        // Only fetch notes that are not soft-deleted
+        notesSnapshot = await db.collection('notes').where('deletedAt', '==', null).get();
     } catch (error: any) {
-        if (error.code === 5) { // NOT_FOUND
+        // This can happen if the 'notes' collection does not exist at all.
+        if (error.code === 5 || (error.details && error.details.includes("no matching index found"))) {
             notesSnapshot = { empty: true, size: 0, docs: [], forEach: () => {} } as unknown as QuerySnapshot;
         } else {
             throw error;
@@ -71,14 +73,14 @@ const getUsersAndStatsFlow = ai.defineFlow(
         usersSnapshot = await db.collection('users').get();
     } catch (error: any) {
         if (error.code === 5) { // NOT_FOUND
-            usersSnapshot = { empty: true, docs: [] } as unknown as QuerySnapshot;
+            usersSnapshot = { empty: true, docs: [], forEach: () => {} } as unknown as QuerySnapshot;
         } else {
             throw error;
         }
     }
     const firestoreUsers = new Map(usersSnapshot.docs.map(doc => [doc.id, doc.data() as Omit<User, 'id'>]));
 
-    // Get note counts for each user
+    // Get note counts for each user from the already fetched active notes
     const notesByUserId = new Map<string, number>();
     notesSnapshot.forEach(doc => {
         const userId = doc.data().userId;
