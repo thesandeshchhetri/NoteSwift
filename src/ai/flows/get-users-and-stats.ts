@@ -48,27 +48,26 @@ const getUsersAndStatsFlow = ai.defineFlow(
     const db = getFirestore();
     const auth = getAuth();
 
-    let notesSnapshot: QuerySnapshot;
+    let allNotesSnapshot: QuerySnapshot;
     try {
-        // Only fetch notes that are not soft-deleted
-        notesSnapshot = await db.collection('notes').where('deletedAt', '==', null).get();
+        allNotesSnapshot = await db.collection('notes').get();
     } catch (error: any) {
-        // This can happen if the 'notes' collection does not exist at all or if the index is not ready.
-        if (error.code === 5 || (error.details && error.details.includes("no matching index found"))) {
-            notesSnapshot = { empty: true, size: 0, docs: [], forEach: () => {} } as unknown as QuerySnapshot;
+        if (error.code === 5) { // NOT_FOUND
+            allNotesSnapshot = { empty: true, size: 0, docs: [], forEach: () => {} } as unknown as QuerySnapshot;
         } else {
             console.error("Error fetching notes for stats:", error);
             throw error; // Re-throw other errors
         }
     }
-    
-    const noteCount = notesSnapshot.size;
+
+    const activeNotes = allNotesSnapshot.docs.filter(doc => doc.data().deletedAt === null);
+    const noteCount = activeNotes.length;
 
     // Chart Data Processing
     const notesByHour = Array(24).fill(0).map((_, i) => ({ hour: `${i.toString().padStart(2, '0')}:00`, count: 0 }));
     const notesByDay: { [key: string]: number } = {};
     
-    notesSnapshot.forEach(doc => {
+    activeNotes.forEach(doc => {
       const data = doc.data();
       if (data.createdAt && data.createdAt instanceof Timestamp) {
         const createdAt = data.createdAt.toDate();
@@ -108,7 +107,7 @@ const getUsersAndStatsFlow = ai.defineFlow(
 
     // Get note counts for each user from the already fetched active notes
     const notesByUserId = new Map<string, number>();
-    notesSnapshot.forEach(doc => {
+    activeNotes.forEach(doc => {
         const userId = doc.data().userId;
         notesByUserId.set(userId, (notesByUserId.get(userId) || 0) + 1);
     });

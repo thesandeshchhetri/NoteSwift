@@ -12,7 +12,17 @@ import { headers } from 'next/headers';
 import { initFirebaseAdmin } from '@/lib/firebase-admin';
 import { UpdateUserPasswordInputSchema, type UpdateUserPasswordInput } from '@/types/schemas';
 
-async function verifySuperAdmin() {
+export async function updateUserPassword(input: UpdateUserPasswordInput): Promise<void> {
+  return updateUserPasswordFlow(input);
+}
+
+const updateUserPasswordFlow = ai.defineFlow(
+  {
+    name: 'updateUserPasswordFlow',
+    inputSchema: UpdateUserPasswordInputSchema,
+    outputSchema: z.void(),
+  },
+  async ({ uid, newPassword }) => {
     const headersList = headers();
     const idToken = headersList.get('Authorization')?.split('Bearer ')[1];
     
@@ -32,21 +42,6 @@ async function verifySuperAdmin() {
         console.error("Auth verification failed:", error);
         throw new Error('Unauthorized: Invalid token.');
     }
-}
-
-export async function updateUserPassword(input: UpdateUserPasswordInput): Promise<void> {
-  return updateUserPasswordFlow(input);
-}
-
-const updateUserPasswordFlow = ai.defineFlow(
-  {
-    name: 'updateUserPasswordFlow',
-    inputSchema: UpdateUserPasswordInputSchema,
-    outputSchema: z.void(),
-  },
-  async ({ uid, newPassword }) => {
-    await verifySuperAdmin();
-    const auth = getAuth();
     
     await auth.updateUser(uid, {
       password: newPassword,

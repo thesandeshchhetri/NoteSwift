@@ -14,7 +14,17 @@ import { headers } from 'next/headers';
 import { initFirebaseAdmin } from '@/lib/firebase-admin';
 import { DeleteUserInputSchema, type DeleteUserInput } from '@/types/schemas';
 
-async function verifySuperAdmin() {
+export async function deleteUser(input: DeleteUserInput): Promise<void> {
+  return deleteUserFlow(input);
+}
+
+const deleteUserFlow = ai.defineFlow(
+  {
+    name: 'deleteUserFlow',
+    inputSchema: DeleteUserInputSchema,
+    outputSchema: z.void(),
+  },
+  async ({ uid }) => {
     const headersList = headers();
     const idToken = headersList.get('Authorization')?.split('Bearer ')[1];
     
@@ -34,22 +44,8 @@ async function verifySuperAdmin() {
         console.error("Auth verification failed:", error);
         throw new Error('Unauthorized: Invalid token.');
     }
-}
 
-export async function deleteUser(input: DeleteUserInput): Promise<void> {
-  return deleteUserFlow(input);
-}
-
-const deleteUserFlow = ai.defineFlow(
-  {
-    name: 'deleteUserFlow',
-    inputSchema: DeleteUserInputSchema,
-    outputSchema: z.void(),
-  },
-  async ({ uid }) => {
-    await verifySuperAdmin();
     const db = await getDb();
-    const auth = getAuth();
     
     // 1. Delete all notes for the user
     const notesRef = collection(db, 'notes');
