@@ -119,7 +119,7 @@ export function UserNotesModal({ isOpen, onOpenChange, user, notes, loading, onN
                                         <TableCell>{format(parseISO(note.updatedAt), 'PPP')}</TableCell>
                                         <TableCell>{note.tags.join(', ')}</TableCell>
                                         <TableCell className="text-right space-x-2">
-                                            {currentUser?.role === 'superadmin' && (
+                                            {(currentUser?.role === 'superadmin' || currentUser?.role === 'admin') && (
                                                 <Button variant="destructive" size="sm" onClick={() => handleDeleteRequest(note)}>
                                                     <Trash2 className="mr-2 h-4 w-4" />
                                                     Delete
